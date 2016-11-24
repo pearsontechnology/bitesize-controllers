@@ -43,6 +43,8 @@ func NewVaultReader() (*VaultReader, error) {
         return &VaultReader{ Enabled: false}, err
     }
 
+    // Needs VaultReady
+
     return &VaultReader{
         Enabled: vaultEnabled,
         Client: client,
@@ -51,6 +53,7 @@ func NewVaultReader() (*VaultReader, error) {
 
 // RenewToken renews vault's token
 func (r *VaultReader) RenewToken() {
+    // It's a go routine now. Add ticker
     tokenPath := "/auth/token/renew-self"
     tokenData, err := r.Client.Logical().Write(tokenPath, nil)
 

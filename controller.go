@@ -17,82 +17,84 @@ limitations under the License.
 package main
 
 import (
-  "fmt"
-  "log"
-  "reflect"
+    "fmt"
+    "log"
+    "reflect"
 
- 	"k8s.io/client-go/1.4/kubernetes"
-	"k8s.io/client-go/1.4/pkg/api"
-	"k8s.io/client-go/1.4/rest"
-  "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
+    "k8s.io/client-go/1.4/kubernetes"
+    "k8s.io/client-go/1.4/pkg/api"
+    "k8s.io/client-go/1.4/rest"
+    "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
-  "k8s.io/kubernetes/pkg/util/flowcontrol"
-  "k8s.io/contrib/ingress/controllers/nginx-alpha-ssl/nginx"
+    "k8s.io/kubernetes/pkg/util/flowcontrol"
+    "k8s.io/contrib/ingress/controllers/nginx-alpha-ssl/nginx"
 
-  "github.com/quipo/statsd"
+    "github.com/quipo/statsd"
 )
 
-const version = "1.6.9"
+const version = "1.7.1"
 
 func main() {
 
-  config, err := rest.InClusterConfig()
-	if err != nil {
-		log.Fatalf("Failed to create client: %v", err.Error())
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("Failed to create client: %v", err.Error())
-	}
-
-  stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
-
-  nginx.Start()
-
-  fmt.Printf("\n Ingress Controller version: %v\n", version)
-
-  rateLimiter := flowcontrol.NewTokenBucketRateLimiter(0.1, 1)
-  known := &v1beta1.IngressList{}
-
-  // Controller loop
-  for {
-    rateLimiter.Accept()
-    ingresses, err := clientset.Extensions().Ingresses("").List(api.ListOptions{})
-    // ingresses, err := ingClient.List(api.ListOptions{})
+    config, err := rest.InClusterConfig()
     if err != nil {
-      fmt.Printf("Error retrieving ingresses: %v\n", err)
-      continue
-    }
-    if reflect.DeepEqual(ingresses.Items, known.Items) {
-      continue
-    }
-    known = ingresses
-
-    var virtualHosts = []*nginx.VirtualHost{}
-
-    for _, ingress := range ingresses.Items {
-      vhost,_ := nginx.NewVirtualHost(ingress)
-      vhost.ParsePaths()
-
-      if err = vhost.CreateVaultCerts(); err != nil {
-          fmt.Printf("%s\n", err.Error() )
-      }
-      virtualHosts = append(virtualHosts, vhost)
+        log.Fatalf("Failed to create client: %v", err.Error())
     }
 
-    nginx.WriteConfig(virtualHosts)
-
-    err = nginx.Verify()
-    stats.Incr("reload", 1)
-
+    clientset, err := kubernetes.NewForConfig(config)
     if err != nil {
-      fmt.Printf("ERR: nginx config failed validation: %v\n", err)
-      fmt.Printf("Sent config error notification to statsd.\n")
-      stats.Incr("error", 1)
-    } else {
-      nginx.Reload()
-      fmt.Printf("nginx config updated.\n")
+        log.Fatalf("Failed to create client: %v", err.Error())
     }
-  }
+
+    stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
+
+    nginx.Start()
+
+    fmt.Printf("\n Ingress Controller version: %v\n", version)
+
+    rateLimiter := flowcontrol.NewTokenBucketRateLimiter(0.1, 1)
+    known := &v1beta1.IngressList{}
+
+    // Controller loop
+    for {
+        rateLimiter.Accept()
+        ingresses, err := clientset.Extensions().Ingresses("").List(api.ListOptions{})
+        // ingresses, err := ingClient.List(api.ListOptions{})
+        if err != nil {
+            fmt.Printf("Error retrieving ingresses: %v\n", err)
+            continue
+        }
+        if reflect.DeepEqual(ingresses.Items, known.Items) {
+            continue
+        }
+        known = ingresses
+
+        var virtualHosts = []*nginx.VirtualHost{}
+
+        for _, ingress := range ingresses.Items {
+            vhost,_ := nginx.NewVirtualHost(ingress)
+            vhost.ParsePaths()
+
+            if err = vhost.CreateVaultCerts(); err != nil {
+                fmt.Printf("%s\n", err.Error() )
+            }
+            // TODO: Backend validation
+            virtualHosts = append(virtualHosts, vhost)
+        }
+
+        nginx.WriteConfig(virtualHosts)
+
+        err = nginx.Verify()
+
+        stats.Incr("reload", 1)
+
+        if err != nil {
+            fmt.Printf("ERR: nginx config failed validation: %v\n", err)
+            fmt.Printf("Sent config error notification to statsd.\n")
+            stats.Incr("error", 1)
+        } else {
+            nginx.Reload()
+            fmt.Printf("nginx config updated.\n")
+        }
+    }
 }

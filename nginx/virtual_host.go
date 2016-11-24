@@ -107,6 +107,8 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
         return fmt.Errorf("failed to write file %v: %v", crt.Filename, err)
     }
 
+    // Needs cert validation
+
     return nil
 }
 

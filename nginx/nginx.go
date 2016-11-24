@@ -47,6 +47,7 @@ func Template() (*template.Template, error) {
 }
 
 func WriteConfig(virtualHosts []*VirtualHost) error {
+    // Needs to split into separate files
     fmt.Printf("Generating config\n")
     debug := os.Getenv("DEBUG")
     
