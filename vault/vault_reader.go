@@ -4,12 +4,14 @@ import (
     "fmt"
     "strconv"
     "os"
+    "time"
     vault "github.com/hashicorp/vault/api"
 )
 
 type VaultReader struct {
     Enabled bool
     Client *vault.Client
+    TokenRefreshInterval *time.Ticker
 }
 
 type Cert struct {
@@ -21,6 +23,12 @@ func NewVaultReader() (*VaultReader, error) {
     vaultEnabledFlag := os.Getenv("VAULT_ENABLED")
     vaultAddress := os.Getenv("VAULT_ADDR")
     vaultToken := os.Getenv("VAULT_TOKEN")
+    refreshFlag := os.Getenv("VAULT_REFRESH_INTERVAL")
+
+    refreshInterval, err := strconv.Atoi(refreshFlag)
+    if err != nil {
+        refreshInterval = 10
+    }
 
     vaultEnabled, err := strconv.ParseBool(vaultEnabledFlag)
     if err != nil {
@@ -48,19 +56,38 @@ func NewVaultReader() (*VaultReader, error) {
     return &VaultReader{
         Enabled: vaultEnabled,
         Client: client,
+        TokenRefreshInterval: time.NewTicker(time.Minute * time.Duration(refreshInterval)),
     }, nil
 }
 
-// RenewToken renews vault's token
-func (r *VaultReader) RenewToken() {
-    // It's a go routine now. Add ticker
-    tokenPath := "/auth/token/renew-self"
-    tokenData, err := r.Client.Logical().Write(tokenPath, nil)
+// Ready returns true if vault is unsealed and
+// ready to use
+func (r *VaultReader) Ready() bool {
+    if ! r.Enabled {
+        // always ready if we don't use it :)
+        return true
+    }
+    status, err := r.Client.Sys().SealStatus()
+    if err != nil || status == nil {
+        fmt.Printf("Error retrieving vault status\n")
+        return false
+    }
 
-    if err != nil || tokenData == nil {
-        fmt.Printf("Error renewing Vault token %v, %v\n", err, tokenData)
-    } else {
-        fmt.Printf("Successfully renewed Vault token.\n")
+    return !status.Sealed
+}
+
+// RenewToken renews vault's token every TokenRefreshInterval
+func (r *VaultReader) RenewToken() {
+    tokenPath := "/auth/token/renew-self"
+
+    for _ = range r.TokenRefreshInterval.C {
+        tokenData, err := r.Client.Logical().Write(tokenPath, nil)
+
+        if err != nil || tokenData == nil {
+            fmt.Printf("Error renewing Vault token %v, %v\n", err, tokenData)
+        } else {
+            fmt.Printf("Successfully renewed Vault token.\n")
+        }
     }
 }
 

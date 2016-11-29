@@ -56,10 +56,16 @@ http {
 
   {{ if $i.BlueGreen }}
   {{ range $path := $i.Paths }}
-  map $http_x_bluegreen_backend {{ $i.Name }}_{{ $path.Service }}_backend {
+  map $http_x_bluegreen_backend ${{ $i.Name }}_{{ $path.Service }}_backend {
     default "{{ $i.DefaultUrl $path }}";
-    blue    "{{ $i.BlueUrl $path }}";
+    {{ $url := $i.BlueUrl $path }}
+    {{ if $i.IsValidUrl $url }}
+    blue    "{{ $url }}";
+    {{ end }}
+    {{ $url := $i.GreenUrl $path }}
+    {{ if $i.IsValidUrl $url }}
     green   "{{ $i.GreenUrl $path }}";
+    {{ end }}
   }
   {{ end }}
   {{ end }}
@@ -73,10 +79,10 @@ http {
 {{end}}
 {{if $i.Nonssl}}    listen 80;{{end}}
 {{ range $path := $i.Paths }}
-    location {{$path.Location}} {
+    location {{$path.URI}} {
       proxy_set_header Host $host;
       {{ if $i.BlueGreen }}
-      proxy_pass {{ $i.Name }}_{{ $path.Service }}_backend;
+      proxy_pass ${{ $i.Name }}_{{ $path.Service }}_backend;
       {{ else }}
       proxy_pass {{ $i.DefaultUrl $path }};
       {{ end }}

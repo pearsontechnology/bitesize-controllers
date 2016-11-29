@@ -3,6 +3,10 @@ package nginx
 import (
     "fmt"
     "io/ioutil"
+    "net/url"
+    "net/http"
+    "strings"
+    "crypto/tls"
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
     vlt "k8s.io/contrib/ingress/controllers/nginx-alpha-ssl/vault"
@@ -22,8 +26,11 @@ type VirtualHost struct {
 }
 
 // NewVirtualHost returns virtual host instance
-func NewVirtualHost(ingress v1beta1.Ingress) (*VirtualHost, error) {
-    name := ingress.ObjectMeta.Name + "_" + ingress.Namespace
+func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHost, error) {
+    name := strings.Replace(ingress.ObjectMeta.Name, "-","_",-1) +
+            "_" +
+            strings.Replace(ingress.Namespace, "-", "_", -1)
+
     vhost := &VirtualHost{
         Name: name,
         Host: ingress.Spec.Rules[0].Host,
@@ -35,7 +42,6 @@ func NewVirtualHost(ingress v1beta1.Ingress) (*VirtualHost, error) {
         BlueGreen: false,
     }
 
-    vault, _ := vlt.NewVaultReader()
     vhost.Vault = vault
 
     vhost.applyLabels()
@@ -63,18 +69,27 @@ func (vhost *VirtualHost) applyLabels() {
     }
 }
 
-// ParsePaths adds  path list to virtual host instance
+// CollectPaths adds  path list to virtual host instance
 // (from ingress)
-func (vhost *VirtualHost) ParsePaths() {
+func (vhost *VirtualHost) CollectPaths() {
     for _, r := range(vhost.Ingress.Spec.Rules) {
         for _, p := range(r.HTTP.Paths) {
-            l := new(Path)
-            l.Location = p.Path
-            l.Service = p.Backend.ServiceName
-            l.Port = p.Backend.ServicePort.IntVal
-
-            vhost.Paths = append(vhost.Paths, l)
+            vhost.appendService(p.Backend.ServiceName, p)
         }
+    }
+}
+
+func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.HTTPIngressPath) {
+    p := &Path {
+        URI: ingressPath.Path,
+        Service: serviceName,
+        Port: ingressPath.Backend.ServicePort.IntVal,
+        Namespace: vhost.Namespace,
+    }
+
+    dest := vhost.DefaultUrl(*p)
+    if vhost.IsValidUrl(dest) {
+        vhost.Paths = append(vhost.Paths, p)
     }
 }
 
@@ -89,25 +104,29 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
         return fmt.Errorf("No SSL for %s", vhost.Host)
     }
 
-    vhost.Vault.RenewToken()
-
     key, crt, err := vhost.Vault.GetSecretsForHost(vhost.Host)
     if err != nil {
         vhost.Ssl = false
         return err
     }
 
-    if err := ioutil.WriteFile(ConfigPath + "/certs/" + key.Filename, []byte(key.Secret), 0400); err != nil {
+    keyAbsolutePath := ConfigPath + "/certs/" + key.Filename
+    if err := ioutil.WriteFile(keyAbsolutePath, []byte(key.Secret), 0400); err != nil {
         vhost.Ssl = false
-        return fmt.Errorf("Failed to write file %v: %v", key.Filename, err)
+        return fmt.Errorf("Failed to write file %v: %v", keyAbsolutePath, err)
     }
 
-    if err := ioutil.WriteFile(ConfigPath + "/certs/" +  crt.Filename, []byte(crt.Secret), 0400); err != nil {
+    certAbsolutePath := ConfigPath + "/certs/" + crt.Filename
+    if err := ioutil.WriteFile(certAbsolutePath, []byte(crt.Secret), 0400); err != nil {
         vhost.Ssl = false
-        return fmt.Errorf("failed to write file %v: %v", crt.Filename, err)
+        return fmt.Errorf("failed to write file %v: %v", certAbsolutePath, err)
     }
 
-    // Needs cert validation
+    // Cert validation
+    if _, err := tls.LoadX509KeyPair(certAbsolutePath, keyAbsolutePath); err != nil {
+        vhost.Ssl = false
+        return fmt.Errorf("Failed to validate certificate")
+    }
 
     return nil
 }
@@ -122,4 +141,29 @@ func (vhost *VirtualHost) GreenUrl(path Path) string {
 
 func (vhost *VirtualHost) BlueUrl(path Path) string {
     return fmt.Sprintf("%s://%s-blue.%s.svc.cluster.local:%d", vhost.Scheme, path.Service, vhost.Namespace, path.Port)
+}
+
+
+func (vhost *VirtualHost) IsValidUrl(rawurl string) bool {
+    dest, err := url.Parse(rawurl)
+    if err != nil {
+        return false
+    }
+    client := newHTTPClient(dest)
+
+    if _, err = client.Get(rawurl); err != nil {
+        fmt.Printf("Error validating URL: %s\n", rawurl, err.Error())
+        return false
+    }
+    return true
+}
+
+func newHTTPClient(dest *url.URL) *http.Client {
+    if strings.ToLower(dest.Scheme) == "https" {
+        tr := &http.Transport{
+            TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+        }
+        return &http.Client{Transport: tr}
+    }
+    return &http.Client{}
 }

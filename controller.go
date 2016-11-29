@@ -28,6 +28,7 @@ import (
 
     "k8s.io/kubernetes/pkg/util/flowcontrol"
     "k8s.io/contrib/ingress/controllers/nginx-alpha-ssl/nginx"
+    vlt "k8s.io/contrib/ingress/controllers/nginx-alpha-ssl/vault"
 
     "github.com/quipo/statsd"
 )
@@ -55,11 +56,21 @@ func main() {
     rateLimiter := flowcontrol.NewTokenBucketRateLimiter(0.1, 1)
     known := &v1beta1.IngressList{}
 
+    vault, _ := vlt.NewVaultReader()
+    if vault.Enabled {
+        go vault.RenewToken()
+    }
+
     // Controller loop
     for {
         rateLimiter.Accept()
+
+        if !vault.Ready() {
+            continue
+        }
+
         ingresses, err := clientset.Extensions().Ingresses("").List(api.ListOptions{})
-        // ingresses, err := ingClient.List(api.ListOptions{})
+
         if err != nil {
             fmt.Printf("Error retrieving ingresses: %v\n", err)
             continue
@@ -71,15 +82,17 @@ func main() {
 
         var virtualHosts = []*nginx.VirtualHost{}
 
+
         for _, ingress := range ingresses.Items {
-            vhost,_ := nginx.NewVirtualHost(ingress)
-            vhost.ParsePaths()
+            vhost,_ := nginx.NewVirtualHost(ingress, vault)
+            vhost.CollectPaths()
 
             if err = vhost.CreateVaultCerts(); err != nil {
                 fmt.Printf("%s\n", err.Error() )
             }
-            // TODO: Backend validation
-            virtualHosts = append(virtualHosts, vhost)
+            if len(vhost.Paths) > 0 {
+                virtualHosts = append(virtualHosts, vhost)
+            }
         }
 
         nginx.WriteConfig(virtualHosts)

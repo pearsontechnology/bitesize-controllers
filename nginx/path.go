@@ -1,7 +1,9 @@
 package nginx
 
 type Path struct {
-    Location  string
+    URI  string
     Service   string
+    Namespace string
+    Scheme    string
     Port      int32
 }
