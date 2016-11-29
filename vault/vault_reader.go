@@ -20,9 +20,9 @@ type Cert struct {
 }
 
 func NewVaultReader() (*VaultReader, error) {
-    vaultEnabledFlag := os.Getenv("VAULT_ENABLED")
-    vaultAddress := os.Getenv("VAULT_ADDR")
-    vaultToken := os.Getenv("VAULT_TOKEN")
+    enabledFlag := os.Getenv("VAULT_ENABLED")
+    address := os.Getenv("VAULT_ADDR")
+    token := os.Getenv("VAULT_TOKEN")
     refreshFlag := os.Getenv("VAULT_REFRESH_INTERVAL")
 
     refreshInterval, err := strconv.Atoi(refreshFlag)
@@ -30,19 +30,18 @@ func NewVaultReader() (*VaultReader, error) {
         refreshInterval = 10
     }
 
-    vaultEnabled, err := strconv.ParseBool(vaultEnabledFlag)
+    enabled, _ := strconv.ParseBool(vaultEnabledFlag)
     if err != nil {
-        fmt.Printf("VAULT_ENABLED not set\n")
-        return &VaultReader{ Enabled: false}, err
+        enabled = true
     }
 
-    if vaultAddress == "" || vaultToken == "" {
+    if address == "" || token == "" {
         fmt.Printf("Vault not configured\n")
         return &VaultReader{ Enabled: false}, nil
     }
 
     config := vault.DefaultConfig()
-    config.Address = vaultAddress
+    config.Address = address
 
 
     client, err := vault.NewClient(config)
@@ -54,7 +53,7 @@ func NewVaultReader() (*VaultReader, error) {
     // Needs VaultReady
 
     return &VaultReader{
-        Enabled: vaultEnabled,
+        Enabled: enabled,
         Client: client,
         TokenRefreshInterval: time.NewTicker(time.Minute * time.Duration(refreshInterval)),
     }, nil
