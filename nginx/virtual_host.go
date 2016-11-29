@@ -152,7 +152,7 @@ func (vhost *VirtualHost) IsValidUrl(rawurl string) bool {
     client := newHTTPClient(dest)
 
     if _, err = client.Get(rawurl); err != nil {
-        fmt.Printf("Error validating URL: %s\n", rawurl, err.Error())
+        fmt.Printf("Error validating URL: %s\n", err.Error())
         return false
     }
     return true
