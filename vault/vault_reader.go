@@ -30,7 +30,7 @@ func NewVaultReader() (*VaultReader, error) {
         refreshInterval = 10
     }
 
-    enabled, _ := strconv.ParseBool(vaultEnabledFlag)
+    enabled, _ := strconv.ParseBool(enabledFlag)
     if err != nil {
         enabled = true
     }
