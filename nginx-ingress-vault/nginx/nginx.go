@@ -1,13 +1,14 @@
 package nginx
 
 import (
-    "fmt"
     "os"
     "os/exec"
     "io"
     "io/ioutil"
+    "strings"
 
     "text/template"
+    log "github.com/Sirupsen/logrus"
 )
 
 var ConfigPath = "/etc/nginx"
@@ -42,32 +43,37 @@ func Reload() error {
 }
 
 func Template() (*template.Template, error) {
-    return template.New("nginx.conf.tmpl").ParseFiles("nginx.conf.tmpl")
+    fm := template.FuncMap{
+      "replace": func(str string, src string, dst string )  string {
+        return strings.Replace(str, src, dst, -1)
+      },
+    }
+    return template.New("nginx.conf.tmpl").Funcs(fm).ParseFiles("nginx.conf.tmpl")
 
 }
 
 func WriteConfig(virtualHosts []*VirtualHost) error {
     // Needs to split into separate files
-    fmt.Printf("Generating config\n")
+    log.Info("Generating config")
     debug := os.Getenv("DEBUG")
-    
+
     tmpl, err := Template()
     if err != nil {
-        fmt.Printf("Error on template: %s\n", err.Error())
+        log.Errorf("Error on template: %s", err.Error())
         return err
     }
 
     if w, err := os.Create(ConfigPath + "/nginx.conf"); err != nil {
-        fmt.Printf("Error writing config: %s\n", err.Error())
+        log.Errorf("Error writing config: %s", err.Error())
         return err
     } else if err := tmpl.Execute(w, virtualHosts); err != nil {
-        fmt.Printf("Error generating template: %s", err.Error())
+        log.Errorf("Error generating template: %s", err.Error())
         return err
     }
 
     if debug  == "true" {
         conf, _ := ioutil.ReadFile(ConfigPath + "/nginx.conf")
-        fmt.Printf(string(conf))
+        log.Debugf(string(conf))
     }
 
     return nil
@@ -79,7 +85,7 @@ func shellOut(shellCmd string, args []string) error {
   stdout, _ := cmd.StdoutPipe()
   stderr, _ := cmd.StderrPipe()
 
-  fmt.Printf("Starting %v %v\n", shellCmd, args)
+  log.Infof("Starting %v %v\n", shellCmd, args)
 
   go io.Copy(os.Stdout, stdout)
   go io.Copy(os.Stderr, stderr)

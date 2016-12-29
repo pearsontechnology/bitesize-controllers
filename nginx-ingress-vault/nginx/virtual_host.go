@@ -8,8 +8,9 @@ import (
     "strings"
     "crypto/tls"
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
+    log "github.com/Sirupsen/logrus"
 
-    vlt "k8s.io/contrib/ingress/controllers/nginx-alpha-ssl/vault"
+    vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
 )
 
 type VirtualHost struct {
@@ -98,8 +99,8 @@ func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.
 func (vhost *VirtualHost) CreateVaultCerts() error {
     if !vhost.Vault.Enabled {
         return fmt.Errorf("Vault disabled for %s", vhost.Host)
-    }   
-    
+    }
+
     if !vhost.Ssl {
         return fmt.Errorf("No SSL for %s", vhost.Host)
     }
@@ -152,7 +153,7 @@ func (vhost *VirtualHost) IsValidUrl(rawurl string) bool {
     client := newHTTPClient(dest)
 
     if _, err = client.Get(rawurl); err != nil {
-        fmt.Printf("Error validating URL: %s\n", err.Error())
+        log.Errorf("Error validating URL: %s", err.Error())
         return false
     }
     return true

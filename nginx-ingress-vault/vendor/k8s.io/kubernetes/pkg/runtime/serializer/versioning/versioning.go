@@ -21,7 +21,6 @@ import (
 
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/runtime"
-	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
 )
 
 // NewCodecForScheme is a convenience method for callers that are using a scheme.
@@ -33,19 +32,7 @@ func NewCodecForScheme(
 	encodeVersion runtime.GroupVersioner,
 	decodeVersion runtime.GroupVersioner,
 ) runtime.Codec {
-	return NewCodec(encoder, decoder, runtime.UnsafeObjectConvertor(scheme), scheme, scheme, scheme, nil, encodeVersion, decodeVersion)
-}
-
-// NewDefaultingCodecForScheme is a convenience method for callers that are using a scheme.
-func NewDefaultingCodecForScheme(
-	// TODO: I should be a scheme interface?
-	scheme *runtime.Scheme,
-	encoder runtime.Encoder,
-	decoder runtime.Decoder,
-	encodeVersion runtime.GroupVersioner,
-	decodeVersion runtime.GroupVersioner,
-) runtime.Codec {
-	return NewCodec(encoder, decoder, runtime.UnsafeObjectConvertor(scheme), scheme, scheme, scheme, scheme, encodeVersion, decodeVersion)
+	return NewCodec(encoder, decoder, runtime.UnsafeObjectConvertor(scheme), scheme, scheme, scheme, encodeVersion, decodeVersion)
 }
 
 // NewCodec takes objects in their internal versions and converts them to external versions before
@@ -58,7 +45,6 @@ func NewCodec(
 	creater runtime.ObjectCreater,
 	copier runtime.ObjectCopier,
 	typer runtime.ObjectTyper,
-	defaulter runtime.ObjectDefaulter,
 	encodeVersion runtime.GroupVersioner,
 	decodeVersion runtime.GroupVersioner,
 ) runtime.Codec {
@@ -69,7 +55,6 @@ func NewCodec(
 		creater:   creater,
 		copier:    copier,
 		typer:     typer,
-		defaulter: defaulter,
 
 		encodeVersion: encodeVersion,
 		decodeVersion: decodeVersion,
@@ -84,7 +69,6 @@ type codec struct {
 	creater   runtime.ObjectCreater
 	copier    runtime.ObjectCopier
 	typer     runtime.ObjectTyper
-	defaulter runtime.ObjectDefaulter
 
 	encodeVersion runtime.GroupVersioner
 	decodeVersion runtime.GroupVersioner
@@ -118,31 +102,11 @@ func (c *codec) Decode(data []byte, defaultGVK *unversioned.GroupVersionKind, in
 			}
 			return into, gvk, nil
 		}
-
-		// perform defaulting if requested
-		if c.defaulter != nil {
-			// create a copy to ensure defaulting is not applied to the original versioned objects
-			if isVersioned {
-				copied, err := c.copier.Copy(obj)
-				if err != nil {
-					utilruntime.HandleError(err)
-					copied = obj
-				}
-				versioned.Objects = []runtime.Object{copied}
-			}
-			c.defaulter.Default(obj)
-		} else {
-			if isVersioned {
-				versioned.Objects = []runtime.Object{obj}
-			}
-		}
-
 		if err := c.convertor.Convert(obj, into, c.decodeVersion); err != nil {
 			return nil, gvk, err
 		}
-
 		if isVersioned {
-			versioned.Objects = append(versioned.Objects, into)
+			versioned.Objects = []runtime.Object{obj, into}
 			return versioned, gvk, nil
 		}
 		return into, gvk, nil
@@ -153,17 +117,10 @@ func (c *codec) Decode(data []byte, defaultGVK *unversioned.GroupVersionKind, in
 		// create a copy, because ConvertToVersion does not guarantee non-mutation of objects
 		copied, err := c.copier.Copy(obj)
 		if err != nil {
-			utilruntime.HandleError(err)
 			copied = obj
 		}
 		versioned.Objects = []runtime.Object{copied}
 	}
-
-	// perform defaulting if requested
-	if c.defaulter != nil {
-		c.defaulter.Default(obj)
-	}
-
 	out, err := c.convertor.ConvertToVersion(obj, c.decodeVersion)
 	if err != nil {
 		return nil, gvk, err

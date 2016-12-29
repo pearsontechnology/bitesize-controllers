@@ -91,12 +91,9 @@ func (a ByKey) Less(i, j int) bool { return a[i].key < a[j].key }
 // Requirement implements both set based match and exact match
 // Requirement should be initialized via NewRequirement constructor for creating a valid Requirement.
 type Requirement struct {
-	key      string
-	operator selection.Operator
-	// In huge majority of cases we have at most one value here.
-	// It is generally faster to operate on a single-element slice
-	// than on a single-element map, so we have a slice here.
-	strValues []string
+	key       string
+	operator  selection.Operator
+	strValues sets.String
 }
 
 // NewRequirement is the constructor for a Requirement.
@@ -110,7 +107,7 @@ type Requirement struct {
 //     of characters. See validateLabelKey for more details.
 //
 // The empty string is a valid value in the input values set.
-func NewRequirement(key string, op selection.Operator, vals []string) (*Requirement, error) {
+func NewRequirement(key string, op selection.Operator, vals sets.String) (*Requirement, error) {
 	if err := validateLabelKey(key); err != nil {
 		return nil, err
 	}
@@ -131,8 +128,8 @@ func NewRequirement(key string, op selection.Operator, vals []string) (*Requirem
 		if len(vals) != 1 {
 			return nil, fmt.Errorf("for 'Gt', 'Lt' operators, exactly one value is required")
 		}
-		for i := range vals {
-			if _, err := strconv.ParseInt(vals[i], 10, 64); err != nil {
+		for val := range vals {
+			if _, err := strconv.ParseInt(val, 10, 64); err != nil {
 				return nil, fmt.Errorf("for 'Gt', 'Lt' operators, the value must be an integer")
 			}
 		}
@@ -140,22 +137,12 @@ func NewRequirement(key string, op selection.Operator, vals []string) (*Requirem
 		return nil, fmt.Errorf("operator '%v' is not recognized", op)
 	}
 
-	for i := range vals {
-		if err := validateLabelValue(vals[i]); err != nil {
+	for v := range vals {
+		if err := validateLabelValue(v); err != nil {
 			return nil, err
 		}
 	}
-	sort.Strings(vals)
 	return &Requirement{key: key, operator: op, strValues: vals}, nil
-}
-
-func (r *Requirement) hasValue(value string) bool {
-	for i := range r.strValues {
-		if r.strValues[i] == value {
-			return true
-		}
-	}
-	return false
 }
 
 // Matches returns true if the Requirement matches the input Labels.
@@ -175,12 +162,12 @@ func (r *Requirement) Matches(ls Labels) bool {
 		if !ls.Has(r.key) {
 			return false
 		}
-		return r.hasValue(ls.Get(r.key))
+		return r.strValues.Has(ls.Get(r.key))
 	case selection.NotIn, selection.NotEquals:
 		if !ls.Has(r.key) {
 			return true
 		}
-		return !r.hasValue(ls.Get(r.key))
+		return !r.strValues.Has(ls.Get(r.key))
 	case selection.Exists:
 		return ls.Has(r.key)
 	case selection.DoesNotExist:
@@ -202,10 +189,10 @@ func (r *Requirement) Matches(ls Labels) bool {
 		}
 
 		var rValue int64
-		for i := range r.strValues {
-			rValue, err = strconv.ParseInt(r.strValues[i], 10, 64)
+		for strValue := range r.strValues {
+			rValue, err = strconv.ParseInt(strValue, 10, 64)
 			if err != nil {
-				glog.V(10).Infof("ParseInt failed for value %+v in requirement %#v, for 'Gt', 'Lt' operators, the value must be an integer", r.strValues[i], r)
+				glog.V(10).Infof("ParseInt failed for value %+v in requirement %#v, for 'Gt', 'Lt' operators, the value must be an integer", strValue, r)
 				return false
 			}
 		}
@@ -223,8 +210,8 @@ func (r *Requirement) Operator() selection.Operator {
 }
 func (r *Requirement) Values() sets.String {
 	ret := sets.String{}
-	for i := range r.strValues {
-		ret.Insert(r.strValues[i])
+	for k := range r.strValues {
+		ret.Insert(k)
 	}
 	return ret
 }
@@ -271,9 +258,9 @@ func (r *Requirement) String() string {
 		buffer.WriteString("(")
 	}
 	if len(r.strValues) == 1 {
-		buffer.WriteString(r.strValues[0])
+		buffer.WriteString(r.strValues.List()[0])
 	} else { // only > 1 since == 0 prohibited by NewRequirement
-		buffer.WriteString(strings.Join(r.strValues, ","))
+		buffer.WriteString(strings.Join(r.strValues.List(), ","))
 	}
 
 	switch r.operator {
@@ -574,7 +561,7 @@ func (p *Parser) parseRequirement() (*Requirement, error) {
 		return nil, err
 	}
 	if operator == selection.Exists || operator == selection.DoesNotExist { // operator found lookahead set checked
-		return NewRequirement(key, operator, []string{})
+		return NewRequirement(key, operator, nil)
 	}
 	operator, err = p.parseOperator()
 	if err != nil {
@@ -590,7 +577,7 @@ func (p *Parser) parseRequirement() (*Requirement, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewRequirement(key, operator, values.List())
+	return NewRequirement(key, operator, values)
 
 }
 
@@ -797,7 +784,7 @@ func SelectorFromSet(ls Set) Selector {
 	}
 	var requirements internalSelector
 	for label, value := range ls {
-		if r, err := NewRequirement(label, selection.Equals, []string{value}); err != nil {
+		if r, err := NewRequirement(label, selection.Equals, sets.NewString(value)); err != nil {
 			//TODO: double check errors when input comes from serialization?
 			return internalSelector{}
 		} else {
@@ -818,7 +805,7 @@ func SelectorFromValidatedSet(ls Set) Selector {
 	}
 	var requirements internalSelector
 	for label, value := range ls {
-		requirements = append(requirements, Requirement{key: label, operator: selection.Equals, strValues: []string{value}})
+		requirements = append(requirements, Requirement{key: label, operator: selection.Equals, strValues: sets.NewString(value)})
 	}
 	// sort to have deterministic string representation
 	sort.Sort(ByKey(requirements))

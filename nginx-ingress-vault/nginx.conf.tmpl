@@ -11,6 +11,8 @@ http {
   types_hash_max_size 2048;
   server_names_hash_max_size 512;
   server_names_hash_bucket_size 64;
+
+  variables_hash_bucket_size 256;
   # bite-460
   client_max_body_size 128m;
 
@@ -56,7 +58,7 @@ http {
 
   {{ if $i.BlueGreen }}
   {{ range $path := $i.Paths }}
-  map $http_x_bluegreen_backend ${{ $i.Name }}_{{ $path.Service }}_backend {
+  map $http_x_bluegreen_backend ${{ $i.Name }}_{{ replace $path.Service "-" "_" }}_backend {
     default "{{ $i.DefaultUrl $path }}";
     {{ $url := $i.BlueUrl $path }}
     {{ if $i.IsValidUrl $url }}
@@ -82,7 +84,7 @@ http {
     location {{$path.URI}} {
       proxy_set_header Host $host;
       {{ if $i.BlueGreen }}
-      proxy_pass ${{ $i.Name }}_{{ $path.Service }}_backend;
+      proxy_pass ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
       {{ else }}
       proxy_pass {{ $i.DefaultUrl $path }};
       {{ end }}
