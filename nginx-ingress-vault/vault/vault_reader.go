@@ -6,6 +6,7 @@ import (
     "os"
     "time"
     vault "github.com/hashicorp/vault/api"
+    log "github.com/Sirupsen/logrus"
 )
 
 type VaultReader struct {
@@ -36,7 +37,7 @@ func NewVaultReader() (*VaultReader, error) {
     }
 
     if address == "" || token == "" {
-        fmt.Printf("Vault not configured\n")
+        log.Infof("Vault not configured")
         return &VaultReader{ Enabled: false}, nil
     }
 
@@ -46,7 +47,7 @@ func NewVaultReader() (*VaultReader, error) {
 
     client, err := vault.NewClient(config)
     if err != nil {
-        fmt.Printf("WARN: Vault config failed.\n")
+        fmt.Warnf("Vault config failed.")
         return &VaultReader{ Enabled: false}, err
     }
 
@@ -68,7 +69,7 @@ func (r *VaultReader) Ready() bool {
     }
     status, err := r.Client.Sys().SealStatus()
     if err != nil || status == nil {
-        fmt.Printf("Error retrieving vault status\n")
+        log.Info("Error retrieving vault status")
         return false
     }
 
@@ -83,9 +84,9 @@ func (r *VaultReader) RenewToken() {
         tokenData, err := r.Client.Logical().Write(tokenPath, nil)
 
         if err != nil || tokenData == nil {
-            fmt.Printf("Error renewing Vault token %v, %v\n", err, tokenData)
+            log.Errorf("Error renewing Vault token %v, %v\n", err, tokenData)
         } else {
-            fmt.Printf("Successfully renewed Vault token.\n")
+            log.Infof("Successfully renewed Vault token.\n")
         }
     }
 }
@@ -94,14 +95,14 @@ func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
     var e error
 
     vaultPath := "secret/ssl/" + hostname
-    
-    keySecretData, err := r.Client.Logical().Read(vaultPath)    
+
+    keySecretData, err := r.Client.Logical().Read(vaultPath)
     if err != nil || keySecretData == nil {
         e = fmt.Errorf("No secret for %v", hostname)
         return nil, nil, e
     }
 
-    fmt.Printf("Found secret for %s\n", hostname)
+    log.Infof("Found secret for %s", hostname)
 
     key, err := getCertFromData(keySecretData, "key", hostname)
     if err != nil {
@@ -120,10 +121,10 @@ func getCertFromData(data *vault.Secret, dataKey string, hostname string) (*Cert
 
     secret := fmt.Sprintf("%v", data.Data[dataKey])
     if secret == "" {
-        e := fmt.Errorf("WARN: No %s found for %v", dataKey, hostname)
+        e := fmt.Errorf("No %s found for %v", dataKey, hostname)
         return nil, e
     }
     path := hostname + "." + dataKey
-    
+
     return &Cert{ Secret: secret, Filename: path}, nil
 }

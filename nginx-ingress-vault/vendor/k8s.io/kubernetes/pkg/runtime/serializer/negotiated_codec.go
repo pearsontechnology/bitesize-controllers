@@ -20,18 +20,31 @@ import (
 	"k8s.io/kubernetes/pkg/runtime"
 )
 
-// TODO: We should split negotiated serializers that we can change versions on from those we can change
-// serialization formats on
+// TODO: We should figure out what happens when someone asks
+// encoder for version and it conflicts with the raw serializer.
 type negotiatedSerializerWrapper struct {
-	info runtime.SerializerInfo
+	info       runtime.SerializerInfo
+	streamInfo runtime.StreamSerializerInfo
 }
 
-func NegotiatedSerializerWrapper(info runtime.SerializerInfo) runtime.NegotiatedSerializer {
-	return &negotiatedSerializerWrapper{info}
+func NegotiatedSerializerWrapper(info runtime.SerializerInfo, streamInfo runtime.StreamSerializerInfo) runtime.NegotiatedSerializer {
+	return &negotiatedSerializerWrapper{info, streamInfo}
 }
 
-func (n *negotiatedSerializerWrapper) SupportedMediaTypes() []runtime.SerializerInfo {
-	return []runtime.SerializerInfo{n.info}
+func (n *negotiatedSerializerWrapper) SupportedMediaTypes() []string {
+	return []string{}
+}
+
+func (n *negotiatedSerializerWrapper) SerializerForMediaType(mediaType string, options map[string]string) (runtime.SerializerInfo, bool) {
+	return n.info, true
+}
+
+func (n *negotiatedSerializerWrapper) SupportedStreamingMediaTypes() []string {
+	return []string{}
+}
+
+func (n *negotiatedSerializerWrapper) StreamingSerializerForMediaType(mediaType string, options map[string]string) (runtime.StreamSerializerInfo, bool) {
+	return n.streamInfo, true
 }
 
 func (n *negotiatedSerializerWrapper) EncoderForVersion(e runtime.Encoder, _ runtime.GroupVersioner) runtime.Encoder {
