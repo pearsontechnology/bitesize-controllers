@@ -47,7 +47,7 @@ func NewVaultReader() (*VaultReader, error) {
 
     client, err := vault.NewClient(config)
     if err != nil {
-        fmt.Warnf("Vault config failed.")
+        fmt.Errorf("Vault config failed.")
         return &VaultReader{ Enabled: false}, err
     }
 
