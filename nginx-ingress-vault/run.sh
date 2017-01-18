@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/bin/bash
+
+# Enable job control
+set -m
 
 if [ -z ${VAULT_SKIP_VERIFY} ]; then
   export VAULT_SKIP_VERIFY="true"
@@ -33,4 +36,8 @@ if [ ${DEBUG} = "true" ]; then
   netstat -an | grep LISTEN
 fi
 
-/bin/bash -c /controller
+exec /controller &
+pid=$!
+trap 'kill -SIGTERM $pid' EXIT
+echo "Nginx Controller started pid: $pid"
+fg %1
