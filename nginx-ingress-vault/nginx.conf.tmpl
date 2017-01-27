@@ -83,6 +83,8 @@ http {
 {{ range $path := $i.Paths }}
     location {{$path.URI}} {
       proxy_set_header Host $host;
+      # cops-374 - Will forward the Nginx pod name as a custom header
+      add_header X-Loadbalanacer-Id {{$i.GetPodName}};
       {{ if $i.BlueGreen }}
       proxy_pass ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
       {{ else }}

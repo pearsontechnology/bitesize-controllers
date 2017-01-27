@@ -19,6 +19,11 @@ spec:
         imagePullPolicy: Always
         name: nginx-ingress
         env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
           - name: "VAULT_ADDR"
             value: "http://vault.kube-system.svc.cluster.local:8243"
           - name: "VAULT_SKIP_VERIFY"

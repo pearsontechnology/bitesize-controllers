@@ -2,6 +2,7 @@ package nginx
 
 import (
     "fmt"
+    "os"
     "io/ioutil"
     "net/url"
     "net/http"
@@ -130,6 +131,12 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
     }
 
     return nil
+}
+
+// cops-374 - Get Nginx pod name and pass it to the nginx.conf.tmpl
+// to generate the X-Loadbalanacer-Id in runtime.
+func (vhost *VirtualHost) GetPodName() string {
+    return os.Getenv("POD_NAME")
 }
 
 func (vhost *VirtualHost) DefaultUrl(path Path) string {
