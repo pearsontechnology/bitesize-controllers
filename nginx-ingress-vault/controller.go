@@ -98,6 +98,8 @@ func main() {
         }
 
         nginx.WriteConfig(virtualHosts)
+        // cops-165 - Generate custom error page per vhost
+        nginx.WriteCustomErrorPages(virtualHosts)
 
         err = nginx.Verify()
 
