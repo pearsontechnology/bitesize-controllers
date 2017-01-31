@@ -74,6 +74,7 @@ http {
 
   server {
     server_name {{$i.Host}};
+    resolver kube-dns.kube-system.svc.cluster.local;
 {{if $i.Ssl}}
     listen 443 ssl;
     ssl_certificate   /etc/nginx/certs/{{$i.Host}}.crt;
