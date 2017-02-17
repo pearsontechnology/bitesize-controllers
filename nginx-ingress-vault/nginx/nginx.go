@@ -20,8 +20,20 @@ func Start() error {
         "-c",
         ConfigPath + "/nginx.conf",
     }
-    shellOut(Command, nginxArgs)
-    return nil
+    reloadArgs := []string{
+        "-s",
+        "reload",
+    }
+    searchArgs := strings.Join(nginxArgs," ")
+    searchcmd := "ps -aux | grep \"" +  Command + " " + searchArgs + "\" | grep -v grep"
+    err := exec.Command("sh","-c",searchcmd).Run()
+    if err == nil {
+        return exec.Command(Command, reloadArgs...).Run()
+    } else {
+        shellOut(Command, nginxArgs)
+        return nil
+    }
+
 }
 
 func Verify() error {
@@ -32,14 +44,6 @@ func Verify() error {
     }
     return exec.Command(Command, verifyArgs...).Run()
 
-}
-
-func Reload() error {
-    reloadArgs := []string{
-        "-s",
-        "reload",
-    }
-    return exec.Command(Command, reloadArgs...).Run()
 }
 
 func Template() (*template.Template, error) {
