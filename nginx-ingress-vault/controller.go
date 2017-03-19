@@ -33,7 +33,7 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.7.1"
+const version = "1.7.6"
 
 func main() {
 
@@ -50,8 +50,6 @@ func main() {
     }
 
     stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
-
-    nginx.Start()
 
     log.Infof("\n Ingress Controller version: %v", version)
 
@@ -108,7 +106,7 @@ func main() {
             log.Infof("Sent config error notification to statsd.")
             stats.Incr("error", 1)
         } else {
-            nginx.Reload()
+            nginx.Start()
             log.Infof("nginx config updated.")
         }
     }
