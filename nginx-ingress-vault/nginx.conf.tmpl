@@ -71,6 +71,14 @@ http {
   }
   {{ end }}
   {{ end }}
+  {{if not $i.Nonssl}}
+  server {
+  # cops-479 - Add 301 redirect if httpsOnly is set to true.
+    listen  80;
+    server_name {{$i.Host}};
+    resolver kube-dns.kube-system.svc.cluster.local;
+    return  301  https://$server_name$request_uri;
+  }{{end}}
 
   server {
     server_name {{$i.Host}};

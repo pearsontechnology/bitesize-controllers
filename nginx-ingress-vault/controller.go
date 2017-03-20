@@ -33,7 +33,7 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.7.6"
+const version = "1.7.7"
 
 func main() {
 
