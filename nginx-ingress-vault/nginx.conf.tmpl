@@ -61,13 +61,9 @@ http {
   map $http_x_bluegreen_backend ${{ $i.Name }}_{{ replace $path.Service "-" "_" }}_backend {
     default "{{ $i.DefaultUrl $path }}";
     {{ $url := $i.BlueUrl $path }}
-    {{ if $i.IsValidUrl $url }}
     blue    "{{ $url }}";
-    {{ end }}
     {{ $url := $i.GreenUrl $path }}
-    {{ if $i.IsValidUrl $url }}
     green   "{{ $i.GreenUrl $path }}";
-    {{ end }}
   }
   {{ end }}
   {{ end }}
@@ -110,3 +106,4 @@ http {
 {{end}}
   }{{end}}
 }
+
