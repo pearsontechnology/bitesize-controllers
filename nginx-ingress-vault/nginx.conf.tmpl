@@ -95,9 +95,13 @@ http {
       # cops-374 - Will forward the Nginx pod name as a custom header
       add_header X-Loadbalanacer-Id {{$i.GetPodName}};
       {{ if $i.BlueGreen }}
-      proxy_pass ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
+      # proxy_pass ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
+      set $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
+      proxy_pass $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
       {{ else }}
-      proxy_pass {{ $i.DefaultUrl $path }};
+      # proxy_pass {{ $i.DefaultUrl $path }};
+      set $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend {{ $i.DefaultUrl $path }};
+      proxy_pass $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
       {{ end }}
     }
 {{end}}
