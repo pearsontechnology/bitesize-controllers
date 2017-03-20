@@ -78,7 +78,8 @@ http {
     server_name {{$i.Host}};
     resolver kube-dns.kube-system.svc.cluster.local;
     return  301  https://$server_name$request_uri;
-  }{{end}}
+  }
+  {{end}}
 
   server {
     server_name {{$i.Host}};
@@ -88,7 +89,9 @@ http {
     ssl_certificate   /etc/nginx/certs/{{$i.Host}}.crt;
     ssl_certificate_key /etc/nginx/certs/{{$i.Host}}.key;
 {{end}}
-{{if $i.Nonssl}}    listen 80;{{end}}
+{{if $i.Nonssl}}
+    listen 80;
+{{end}}
 {{ range $path := $i.Paths }}
     location {{$path.URI}} {
       proxy_set_header Host $host;
