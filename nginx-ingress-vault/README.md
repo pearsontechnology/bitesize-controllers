@@ -58,7 +58,11 @@ vault write www.example.com key="-----BEGIN PRIVATE KEY-----..." crt="-----BEGIN
 
 ## Deploying the controller
 
-Deploying the controller is as easy as creating the RC in this directory. Having done so you can test it with the following echoheaders application:
+On Bitesize:
+
+`modules/aws/s3/files/kubernetes/addons/ingress/nginx-ingress.yaml`
+
+Deploying the controller elsewhere is as easy as creating the RC in this directory. Having done so you can test it with the following echoheaders application:
 
 ```yaml
 # 3 Services for the 3 endpoints of the Ingress
