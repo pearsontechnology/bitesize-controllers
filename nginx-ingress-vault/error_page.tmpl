@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Oops !!!</title>
+    </head>
+    <body>
+        <h1>Oops !!!</h1>
+        <p>Something went wrong ...</p>
+        
+        <p>If you believe you've reached this page in error, please notify support!</p>
+        
+        <table>
+            <tr><td>Error Code: </td><td id='status'></td></tr>
+            <tr><td>Host: </td><td id='host'>{{.Host}}</td></tr>
+            <tr><td>Path: </td><td id='path'></td></tr>
+            <tr><td>Protocol: </td><td id='protocol'></td></tr>
+            <tr><td>User-agent: </td><td id='user-agent'></td></tr>
+            <tr><td>Loadbalanacer: </td><td id='loadbalanacer'>{{.GetPodName}}</td></tr>
+        </table>
+    </body>
+</html>
+
+<script>
+    var req = new XMLHttpRequest();
+    req.open('GET', document.location, false);
+    req.send(null);
+    document.getElementById("status").innerHTML = req.status
+    document.getElementById("path").innerHTML = window.location.pathname
+    document.getElementById("protocol").innerHTML = window.location.protocol
+    document.getElementById("user-agent").innerHTML = navigator.userAgent
+</script>
+
