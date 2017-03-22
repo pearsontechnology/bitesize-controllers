@@ -18,5 +18,11 @@ COPY default.conf /etc/nginx/nginx.conf
 COPY /run.sh /usr/bin/run.sh
 RUN chmod +x /usr/bin/run.sh
 COPY nginx.conf.tmpl /etc/nginx/
+# cops-165
+COPY error_page.tmpl /etc/nginx/
+# To overide the default nginx page
+COPY index.html /usr/share/nginx/html/index.html
+COPY pearson_logo.png /usr/share/nginx/html/
+COPY favicon.ico /usr/share/nginx/html/
 
 CMD ["/usr/bin/run.sh"]

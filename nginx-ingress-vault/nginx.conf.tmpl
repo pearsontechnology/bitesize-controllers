@@ -81,6 +81,20 @@ http {
     ssl_certificate_key /etc/nginx/certs/{{$i.Host}}.key;
 {{end}}
 {{if $i.Nonssl}}    listen 80;{{end}}
+    # cops-165 - This will intercept the back-end errors and forward a custom
+    # error page in the Nginx node.
+    proxy_intercept_errors on;
+
+    # cops-165 - get custom error pages
+    error_page 404 401 500 502 503 504 /error_{{$i.Name}}.html;
+    location = /error_{{$i.Name}}.html {
+        # Add header in 3XX 4XX and 5XX will only work in Nginx > 1.7
+        add_header X-Loadbalanacer-Id {{$i.GetPodName}};
+        add_header X-Upstream-IP $upstream_addr;
+
+        root /usr/share/nginx/html;
+    }
+
 {{ range $path := $i.Paths }}
     location {{$path.URI}} {
       proxy_set_header Host $host;
