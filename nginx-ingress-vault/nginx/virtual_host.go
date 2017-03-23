@@ -9,7 +9,6 @@ import (
     "strings"
     "crypto/tls"
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
-    log "github.com/Sirupsen/logrus"
 
     vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
 )

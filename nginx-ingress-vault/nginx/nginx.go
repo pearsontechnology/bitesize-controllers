@@ -97,6 +97,7 @@ func WriteConfig(virtualHosts []*VirtualHost) error {
         return err
     }
 
+
     if debug  == "true" {
         conf, _ := ioutil.ReadFile(ConfigPath + "/nginx.conf")
         log.Debugf(string(conf))
