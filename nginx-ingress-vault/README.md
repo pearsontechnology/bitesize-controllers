@@ -88,14 +88,9 @@ spec:
         name: nginx-ingress
         env:
           - name: "VAULT_ADDR"
-            value: "https://vault.kube-system.svc.cluster.local:8243"
+            value: "https://vault.bitesize$ENVIRONMENT.prsn-dev.io:8243"
           - name: "VAULT_SKIP_VERIFY"
-            value: "false"
-          - name: "VAULT_SSL_SIGNER"
-            value: >
-                   "-----BEGIN CERTIFICATE-----
-                   ...
-                   -----END CERTIFICATE-----"
+            value: "true"
         ports:
         - containerPort: 80
           hostPort: 80
