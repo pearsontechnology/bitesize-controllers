@@ -61,16 +61,21 @@ http {
   map $http_x_bluegreen_backend ${{ $i.Name }}_{{ replace $path.Service "-" "_" }}_backend {
     default "{{ $i.DefaultUrl $path }}";
     {{ $url := $i.BlueUrl $path }}
-    {{ if $i.IsValidUrl $url }}
     blue    "{{ $url }}";
-    {{ end }}
     {{ $url := $i.GreenUrl $path }}
-    {{ if $i.IsValidUrl $url }}
     green   "{{ $i.GreenUrl $path }}";
-    {{ end }}
   }
   {{ end }}
   {{ end }}
+  {{if not $i.Nonssl}}
+  server {
+  # cops-479 - Add 301 redirect if httpsOnly is set to true.
+    listen  80;
+    server_name {{$i.Host}};
+    resolver kube-dns.kube-system.svc.cluster.local;
+    return  301  https://$server_name$request_uri;
+  }
+  {{end}}
 
   server {
     server_name {{$i.Host}};
@@ -81,17 +86,36 @@ http {
     ssl_certificate_key /etc/nginx/certs/{{$i.Host}}.key;
 {{end}}
 {{if $i.Nonssl}}    listen 80;{{end}}
+    # cops-165 - This will intercept the back-end errors and forward a custom
+    # error page in the Nginx node.
+    proxy_intercept_errors on;
+
+    # cops-165 - get custom error pages
+    error_page 404 401 500 502 503 504 /error_{{$i.Name}}.html;
+    location = /error_{{$i.Name}}.html {
+        # Add header in 3XX 4XX and 5XX will only work in Nginx > 1.7
+        add_header X-Loadbalanacer-Id {{$i.GetPodName}};
+        add_header X-Upstream-IP $upstream_addr;
+
+        root /usr/share/nginx/html;
+    }
+
 {{ range $path := $i.Paths }}
     location {{$path.URI}} {
       proxy_set_header Host $host;
       # cops-374 - Will forward the Nginx pod name as a custom header
       add_header X-Loadbalanacer-Id {{$i.GetPodName}};
       {{ if $i.BlueGreen }}
-      proxy_pass ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
+      # proxy_pass ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
+      set $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
+      proxy_pass $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
       {{ else }}
-      proxy_pass {{ $i.DefaultUrl $path }};
+      # proxy_pass {{ $i.DefaultUrl $path }};
+      set $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend {{ $i.DefaultUrl $path }};
+      proxy_pass $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
       {{ end }}
     }
 {{end}}
   }{{end}}
 }
+
