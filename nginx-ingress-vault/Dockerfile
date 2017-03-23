@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM gcr.io/google_containers/nginx
+FROM nginx:latest
 COPY controller /
 COPY default.conf /etc/nginx/nginx.conf
 COPY /run.sh /usr/bin/run.sh
