@@ -56,6 +56,28 @@ func Template() (*template.Template, error) {
 
 }
 
+func WriteCustomErrorPages(virtualHosts []*VirtualHost) error {
+    // cops-165 - Generate custom error page per vhost
+    etmpl, _ := template.ParseFiles("error_page.tmpl")
+    log.Info("load the template file for custom_error_pages")
+
+    for host := range virtualHosts {
+        if epage, err := os.Create("/usr/share/nginx/html/error_" + virtualHosts[host].Name + ".html"); err != nil {
+            log.Errorf("Error writing config: %s", err.Error())
+            return err
+        } else if err := etmpl.Execute(epage, virtualHosts[host]); err != nil {
+            log.Errorf("Error creating custom_error_page: error_" + virtualHosts[host].Name + ".html")
+            return err
+        } else {
+            log.Info("Create custom_error_page: error_" + virtualHosts[host].Name + ".html")
+            epage.Close()
+        }
+    }
+
+    return nil
+
+}
+
 func WriteConfig(virtualHosts []*VirtualHost) error {
     // Needs to split into separate files
     log.Info("Generating config")

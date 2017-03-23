@@ -89,10 +89,7 @@ func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.
         Namespace: vhost.Namespace,
     }
 
-    dest := vhost.DefaultUrl(*p)
-    if vhost.IsValidUrl(dest) {
-        vhost.Paths = append(vhost.Paths, p)
-    }
+    vhost.Paths = append(vhost.Paths, p)
 }
 
 // CreateVaultCerts gets certificates (private and crt) from vault
@@ -151,21 +148,6 @@ func (vhost *VirtualHost) BlueUrl(path Path) string {
     return fmt.Sprintf("%s://%s-blue.%s.svc.cluster.local:%d", vhost.Scheme, path.Service, vhost.Namespace, path.Port)
 }
 
-
-func (vhost *VirtualHost) IsValidUrl(rawurl string) bool {
-    dest, err := url.Parse(rawurl)
-    if err != nil {
-        return false
-    }
-    client := newHTTPClient(dest)
-
-    if _, err = client.Get(rawurl); err != nil {
-        log.Errorf("Error validating URL: %s", err.Error())
-        return false
-    }
-    return true
-}
-
 func newHTTPClient(dest *url.URL) *http.Client {
     if strings.ToLower(dest.Scheme) == "https" {
         tr := &http.Transport{
@@ -175,3 +157,4 @@ func newHTTPClient(dest *url.URL) *http.Client {
     }
     return &http.Client{}
 }
+
