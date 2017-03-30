@@ -52,13 +52,13 @@ func Template() (*template.Template, error) {
         return strings.Replace(str, src, dst, -1)
       },
     }
-    return template.New("nginx.conf.tmpl").Funcs(fm).ParseFiles("nginx.conf.tmpl")
+    return template.New("nginx.conf.tmpl").Funcs(fm).ParseFiles("/etc/nginx/nginx.conf.tmpl")
 
 }
 
 func WriteCustomErrorPages(virtualHosts []*VirtualHost) error {
     // cops-165 - Generate custom error page per vhost
-    etmpl, _ := template.ParseFiles("error_page.tmpl")
+    etmpl, _ := template.ParseFiles("/etc/nginx/error_page.tmpl")
     log.Info("load the template file for custom_error_pages")
 
     for host := range virtualHosts {

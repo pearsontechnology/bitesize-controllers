@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# BITE-1345 image source previously gcr.io/google-containers/nginx:latest
 
-FROM gcr.io/google_containers/nginx
+FROM nginx:latest
 COPY controller /
 COPY default.conf /etc/nginx/nginx.conf
 COPY /run.sh /usr/bin/run.sh
@@ -24,5 +25,7 @@ COPY error_page.tmpl /etc/nginx/
 COPY index.html /usr/share/nginx/html/index.html
 COPY pearson_logo.png /usr/share/nginx/html/
 COPY favicon.ico /usr/share/nginx/html/
+# BITE-1345
+COPY dhparam.pem /etc/nginx/certs/
 
 CMD ["/usr/bin/run.sh"]
