@@ -71,21 +71,16 @@ http {
   map $http_x_bluegreen_backend ${{ $i.Name }}_{{ replace $path.Service "-" "_" }}_backend {
     default "{{ $i.DefaultUrl $path }}";
     {{ $url := $i.BlueUrl $path }}
+    {{ if $i.IsValidUrl $url }}
     blue    "{{ $url }}";
+    {{ end }}
     {{ $url := $i.GreenUrl $path }}
+    {{ if $i.IsValidUrl $url }}
     green   "{{ $i.GreenUrl $path }}";
+    {{ end }}
   }
   {{ end }}
   {{ end }}
-  {{if not $i.Nonssl}}
-  server {
-  # cops-479 - Add 301 redirect if httpsOnly is set to true.
-    listen  80;
-    server_name {{$i.Host}};
-    resolver kube-dns.kube-system.svc.cluster.local;
-    return  301  https://$server_name$request_uri;
-  }
-  {{end}}
 
   server {
     server_name {{$i.Host}};
@@ -116,13 +111,9 @@ http {
       # cops-374 - Will forward the Nginx pod name as a custom header
       add_header X-Loadbalancer-Id {{$i.GetPodName}};
       {{ if $i.BlueGreen }}
-      # proxy_pass ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
-      set $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
-      proxy_pass $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
+      proxy_pass ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
       {{ else }}
-      # proxy_pass {{ $i.DefaultUrl $path }};
-      set $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend {{ $i.DefaultUrl $path }};
-      proxy_pass $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
+      proxy_pass {{ $i.DefaultUrl $path }};
       {{ end }}
     }
 {{end}}
