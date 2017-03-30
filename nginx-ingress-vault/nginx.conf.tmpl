@@ -104,7 +104,7 @@ http {
     error_page 404 401 500 502 503 504 /error_{{$i.Name}}.html;
     location = /error_{{$i.Name}}.html {
         # Add header in 3XX 4XX and 5XX will only work in Nginx > 1.7
-        add_header X-Loadbalanacer-Id {{$i.GetPodName}};
+        add_header X-Loadbalancer-Id {{$i.GetPodName}};
         add_header X-Upstream-IP $upstream_addr;
 
         root /usr/share/nginx/html;
@@ -114,7 +114,7 @@ http {
     location {{$path.URI}} {
       proxy_set_header Host $host;
       # cops-374 - Will forward the Nginx pod name as a custom header
-      add_header X-Loadbalanacer-Id {{$i.GetPodName}};
+      add_header X-Loadbalancer-Id {{$i.GetPodName}};
       {{ if $i.BlueGreen }}
       # proxy_pass ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
       set $upstream_{{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend ${{ $i.Name }}_{{ replace $path.Service "-" "_"}}_backend;
