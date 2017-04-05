@@ -181,7 +181,7 @@ if [[ $BUILD == true ]]; then
 fi
 
 if [[ $PUBLISH == true ]]; then
-  echo "Publishing $VERSION"
+  echo "Publishing $VERSION as tag $TAG"
   if [[ $DRY_RUN == true ]]; then
     echo docker build -t $REPOSITORY:$TAG .
     echo docker push $REPOSITORY:$TAG
@@ -192,6 +192,7 @@ if [[ $PUBLISH == true ]]; then
     docker build -t $REPOSITORY:$TAG .
     docker push $REPOSITORY:$TAG
     if [[ $TAG_LATEST == true ]]; then
+      echo "Publishing $VERSION as tag latest"
       docker rmi $REPOSITORY:latest
       docker push $REPOSITORY:latest
     fi
