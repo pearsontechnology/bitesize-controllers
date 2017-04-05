@@ -161,7 +161,12 @@ if [[ "$CODE_VERSION" != "$VERSION" ]]; then
   if [[ $DRY_RUN == true ]]; then
     echo sed -i "s/$VERSION_LINE/$NEW_VERSION_LINE/" $VERSION_SOURCE_FILE
   else
+    echo "Updating $VERSION_SOURCE_FILE with version $VERSION"
     sed -i "s/$VERSION_LINE/$NEW_VERSION_LINE/" $VERSION_SOURCE_FILE
+    git add $VERSION_SOURCE_FILE
+    git commit -m "v$VERSION"
+    echo "Pushing version tag to repo"
+    git push
   fi
 fi
 
