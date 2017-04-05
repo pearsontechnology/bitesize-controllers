@@ -25,6 +25,7 @@ if [ ! -z "${VAULT_SSL_SIGNER}" ]; then
   echo "${VAULT_SSL_SIGNER}" | sed -e 's/\"//g' | sed -e 's/^[ \t]*//g' | sed -e 's/[ \t]$//g' >> /etc/ssl/certs/ca-certificates.crt
 fi
 
+mkdir -p /etc/nginx/certs
 openssl req -x509 -newkey rsa:2048 -nodes -keyout /etc/nginx/certs/localhost.key -out /etc/nginx/certs/localhost.crt -days 365 -subj "/CN=localhost"
 
 if [ ${DEBUG} = "true" ]; then

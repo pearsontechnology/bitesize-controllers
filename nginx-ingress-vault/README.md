@@ -5,6 +5,9 @@ This is a simple nginx Ingress controller. Expect it to grow up. See [Ingress co
 This version includes SSL support, integrated with HashiCorp Vault and access and error logs, which go to the container stdout/stderr by default.
 
 ## Installation
+If using a MacBook, edit .bash_profile to include:
+export GOOS="linux"
+export GOARCH="amd64"
 
 ```
 go build controller.go && docker rmi devlm/nginx-ingress:latest; docker build -t devlm/nginx-ingress:latest . && docker push devlm/nginx-ingress:latest
