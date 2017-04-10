@@ -75,11 +75,7 @@ vault write www.example.com key="-----BEGIN PRIVATE KEY-----..." crt="-----BEGIN
 
 ## Deploying the controller
 
-On Bitesize:
-
-`modules/aws/s3/files/kubernetes/addons/ingress/nginx-ingress.yaml`
-
-Deploying the controller elsewhere is as easy as creating the RC in this directory. Having done so you can test it with the following echoheaders application:
+Deploying the controller is as easy as creating the RC in this directory. Having done so you can test it with the following echoheaders application:
 
 ```yaml
 # 3 Services for the 3 endpoints of the Ingress
@@ -104,10 +100,14 @@ spec:
         imagePullPolicy: Always
         name: nginx-ingress
         env:
-          - name: "VAULT_ADDR"
-            value: "https://vault.bitesize$ENVIRONMENT.prsn-dev.io:8243"
-          - name: "VAULT_SKIP_VERIFY"
-            value: "true"
+            - name: "VAULT_ENABLED"
+              value: "true"
+            - name: "VAULT_SKIP_VERIFY"
+              value: "true"
+            - name: "VAULT_ADDR"
+              value: "https://vault.bitesize.${ENVIRONMENT}.${DOMAIN}:%%VAULT_SERVICE_PORT%%"
+            - name: "VAULT_TOKEN_FILE"
+              value: "/etc/vault-token/vault-ingress-read-only"
         ports:
         - containerPort: 80
           hostPort: 80
