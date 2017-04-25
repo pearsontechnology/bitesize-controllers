@@ -35,6 +35,7 @@ if [ ${DEBUG} = "true" ]; then
   ps -ef | grep nginx | grep -v grep
   ps -efH
   netstat -an | grep LISTEN
+  env
 fi
 
 exec /controller &

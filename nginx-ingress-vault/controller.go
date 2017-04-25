@@ -18,7 +18,7 @@ package main
 
 import (
     "reflect"
-
+    "os"
     "k8s.io/client-go/1.4/kubernetes"
     "k8s.io/client-go/1.4/pkg/api"
     "k8s.io/client-go/1.4/rest"
@@ -33,11 +33,16 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.8.3"
+const version = "1.8.4"
 
 func main() {
 
     log.SetFormatter(&log.JSONFormatter{})
+
+    debug := os.Getenv("DEBUG")
+    if debug == "true" {
+        log.SetLevel(log.DebugLevel)
+    }
 
     config, err := rest.InClusterConfig()
     if err != nil {

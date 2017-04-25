@@ -100,15 +100,14 @@ spec:
         imagePullPolicy: Always
         name: nginx-ingress
         env:
-          - name: "VAULT_ADDR"
-            value: "https://vault.kube-system.svc.cluster.local:8243"
-          - name: "VAULT_SKIP_VERIFY"
-            value: "false"
-          - name: "VAULT_SSL_SIGNER"
-            value: >
-                   "-----BEGIN CERTIFICATE-----
-                   ...
-                   -----END CERTIFICATE-----"
+            - name: "VAULT_ENABLED"
+              value: "true"
+            - name: "VAULT_SKIP_VERIFY"
+              value: "true"
+            - name: "VAULT_ADDR"
+              value: "https://vault.bitesize.${ENVIRONMENT}.${DOMAIN}:%%VAULT_SERVICE_PORT%%"
+            - name: "VAULT_TOKEN_FILE"
+              value: "/etc/vault-token/vault-ingress-read-only"
         ports:
         - containerPort: 80
           hostPort: 80
