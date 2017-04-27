@@ -103,7 +103,7 @@ http {
     proxy_intercept_errors on;
 
     # cops-165 - get custom error pages
-    error_page 500 502 503 504 /error_{{$i.Name}}.html;
+    error_page 502 503 504 /error_{{$i.Name}}.html;
     location = /error_{{$i.Name}}.html {
         # Add header in 3XX 4XX and 5XX will only work in Nginx > 1.7
         add_header X-Loadbalancer-Id {{$i.GetPodName}};
