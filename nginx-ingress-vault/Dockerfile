@@ -14,6 +14,10 @@
 # BITE-1345 image source previously gcr.io/google-containers/nginx:latest
 
 FROM nginx:latest
+
+# BITE-1428 - change user
+USER root
+
 COPY controller /
 COPY default.conf /etc/nginx/nginx.conf
 COPY /run.sh /usr/bin/run.sh
@@ -27,5 +31,13 @@ COPY pearson_logo.png /usr/share/nginx/html/
 COPY favicon.ico /usr/share/nginx/html/
 # BITE-1345
 COPY dhparam.pem /etc/nginx/certs/
+
+# BITE-1428  - change user
+RUN touch /var/run/nginx.pid && chown -R nginx:nginx /var/run/nginx.pid && chown -R nginx:nginx /var/cache/nginx && \ 
+    chown -R nginx:nginx /controller && chown -R nginx:nginx /etc/nginx/nginx.conf && chown -R nginx:nginx /usr/bin/run.sh && \
+    chown -R nginx:nginx /etc/nginx && chown -R www-data:www-data /usr/share/nginx/html && chown -R www-data:www-data /etc/nginx/certs
+    
+# BITE-1428 - change user
+USER nginx
 
 CMD ["/usr/bin/run.sh"]
