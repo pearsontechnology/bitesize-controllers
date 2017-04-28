@@ -32,11 +32,14 @@ COPY favicon.ico /usr/share/nginx/html/
 # BITE-1345
 COPY dhparam.pem /etc/nginx/certs/
 
+# BITE-1446 - install curl for troubleshooting purposes
+RUN apt-get install curl
+
 # BITE-1428  - change user
-RUN touch /var/run/nginx.pid && chown -R nginx:nginx /var/run/nginx.pid && chown -R nginx:nginx /var/cache/nginx && \ 
+RUN touch /var/run/nginx.pid && chown -R nginx:nginx /var/run/nginx.pid && chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /controller && chown -R nginx:nginx /etc/nginx/nginx.conf && chown -R nginx:nginx /usr/bin/run.sh && \
     chown -R nginx:nginx /etc/nginx && chown -R nginx:nginx /usr/share/nginx/html && chown -R nginx:nginx /etc/nginx/certs
-    
+
 # BITE-1428 - change user
 USER nginx
 
