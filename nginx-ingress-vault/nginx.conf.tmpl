@@ -79,7 +79,9 @@ http {
   {{end}}{{/* if $i.BlueGreen */}}
   {{if not $i.Nonssl}}
   server {
-  # cops-479 - Add 301 redirect if httpsOnly is set to true.
+    # BITE-1446 NGINX security improvements - Remove NGINX version number
+    server_tokens off;
+    # cops-479 - Add 301 redirect if httpsOnly is set to true.
     listen  80;
     server_name {{$i.Host}};
     resolver kube-dns.kube-system.svc.cluster.local;
@@ -88,6 +90,8 @@ http {
   {{end}}{{/* if not $i.Nonssl */}}
 
   server {
+    # BITE-1446 NGINX security improvements - Remove NGINX version number
+    server_tokens off;
     server_name {{$i.Host}};
     resolver kube-dns.kube-system.svc.cluster.local;
     {{if $i.Ssl}}
@@ -108,7 +112,9 @@ http {
         # Add header in 3XX 4XX and 5XX will only work in Nginx > 1.7
         add_header X-Loadbalancer-Id {{$i.GetPodName}};
         add_header X-Upstream-IP $upstream_addr;
-
+        # BITE-1446 NGINX security improvements - Security Headers
+        add_header X-Content-Type-Options nosniff;
+        add_header X-XSS-Protection "1; mode=block";
         root /usr/share/nginx/html;
     }
 
@@ -117,6 +123,9 @@ http {
       proxy_set_header Host $host;
       # cops-374 - Will forward the Nginx pod name as a custom header
       add_header X-Loadbalancer-Id {{$i.GetPodName}};
+      # BITE-1446 NGINX security improvements - Security Headers
+      add_header X-Content-Type-Options nosniff;
+      add_header X-XSS-Protection "1; mode=block";
       {{if $i.BlueGreen}}
       # proxy_pass ${{$i.Name}}_{{replace $path.Service "-" "_"}}_backend;
       set $upstream_{{$i.Name}}_{{replace $path.Service "-" "_"}}_backend ${{$i.Name}}_{{replace $path.Service "-" "_"}}_backend;
