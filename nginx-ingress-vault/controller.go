@@ -33,7 +33,7 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.8.7"
+const version = "1.8.9"
 
 func main() {
 
@@ -94,6 +94,10 @@ func main() {
 
             if err = vhost.CreateVaultCerts(); err != nil {
                 log.Errorf("%s\n", err.Error() )
+            }
+            if err = vhost.ValidateVirtualHost(); err != nil {
+                log.Errorf("Ingress %s failed validation: %s", vhost.Name, err.Error() )
+                continue
             }
             if len(vhost.Paths) > 0 {
                 virtualHosts = append(virtualHosts, vhost)

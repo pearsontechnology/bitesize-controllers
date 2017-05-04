@@ -15,6 +15,8 @@
 
 FROM nginx:latest
 
+RUN apt update && apt install -y openssl procps
+
 COPY controller /
 COPY default.conf /etc/nginx/nginx.conf
 COPY /run.sh /usr/bin/run.sh

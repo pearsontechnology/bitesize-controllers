@@ -8,6 +8,8 @@ import (
     "net/http"
     "strings"
     "crypto/tls"
+    "reflect"
+    "regexp"
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
     vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
@@ -157,3 +159,34 @@ func newHTTPClient(dest *url.URL) *http.Client {
     return &http.Client{}
 }
 
+func (vhost *VirtualHost) ValidateVirtualHost() error {
+
+    schemeRegex, _ := regexp.Compile("^https?$")
+    hostRegex, _ := regexp.Compile("[a-z\\d+].*?\\.\\w{2,8}$")
+
+    if reflect.TypeOf(vhost.Name).String() != "string" || vhost.Name == "" {
+        return fmt.Errorf("Name must be set")
+    }
+    if reflect.TypeOf(vhost.Host).String() != "string" || hostRegex.MatchString(reflect.ValueOf(vhost.Host).String()) != true {
+        return fmt.Errorf("Host must be set")
+    }
+    if reflect.TypeOf(vhost.Namespace).String() != "string" || vhost.Namespace == "" {
+        return fmt.Errorf("Namespace must be set")
+    }
+    if reflect.TypeOf(vhost.Scheme).String() != "string" || schemeRegex.MatchString(reflect.ValueOf(vhost.Scheme).String()) != true {
+        return fmt.Errorf("Scheme must be set")
+    }
+    if reflect.TypeOf(vhost.Ssl).String() != "bool" {
+        return fmt.Errorf("Ssl label must be true; false")
+    }
+    if reflect.TypeOf(vhost.Nonssl).String() != "bool" {
+        return fmt.Errorf("Nonssl label must be true; false")
+    }
+    if reflect.TypeOf(vhost.BlueGreen).String() != "bool" {
+        return fmt.Errorf("BlueGreen label must be true; false")
+    }
+    if reflect.TypeOf(vhost.Paths).String() != "[]*nginx.Path" || vhost.Paths == nil {
+        return fmt.Errorf("Paths must be set")
+    }
+    return nil
+}
