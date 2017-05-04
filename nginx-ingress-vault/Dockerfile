@@ -14,7 +14,12 @@
 # BITE-1345 image source previously gcr.io/google-containers/nginx:latest
 
 FROM nginx:1.13.0
-RUN apt update && apt install -y openssl
+
+# BITE-1428 - change user
+
+USER root
+
+RUN apt update && apt install -y openssl && apt clean
 COPY controller /
 COPY default.conf /etc/nginx/nginx.conf
 COPY /run.sh /usr/bin/run.sh
@@ -28,5 +33,16 @@ COPY pearson_logo.png /usr/share/nginx/html/
 COPY favicon.ico /usr/share/nginx/html/
 # BITE-1345
 COPY dhparam.pem /etc/nginx/certs/
+
+# BITE-1428  - change user
+
+RUN touch /var/run/nginx.pid && chown -R nginx:nginx /var/run/nginx.pid && chown -R nginx:nginx /var/cache/nginx && \ 
+    chown -R nginx:nginx /controller && chown -R nginx:nginx /etc/nginx/nginx.conf && chown -R nginx:nginx /usr/bin/run.sh && \
+    chown -R nginx:nginx /etc/nginx && chown -R nginx:nginx /usr/share/nginx/html && chown -R nginx:nginx /etc/nginx/certs && \
+    chown -R nginx:nginx /etc/ssl/certs && chown -R nginx:nginx /etc/ssl/certs/ca-certificates.crt && chown -R nginx:nginx /etc/nginx/conf.d
+    
+# BITE-1428 - change user
+
+USER nginx
 
 CMD ["/usr/bin/run.sh"]
