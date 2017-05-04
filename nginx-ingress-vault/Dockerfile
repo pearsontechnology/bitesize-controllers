@@ -15,6 +15,8 @@
 
 FROM nginx:latest
 
+# Install OpenSSL - Cristian and use explict nginx tag
+
 # BITE-1428 - change user
 USER root
 
