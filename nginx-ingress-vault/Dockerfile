@@ -13,7 +13,7 @@
 # limitations under the License.
 # BITE-1345 image source previously gcr.io/google-containers/nginx:latest
 
-FROM nginx:latest
+FROM nginx:1.13.0
 
 # Install OpenSSL - Cristian and use explict nginx tag
 
