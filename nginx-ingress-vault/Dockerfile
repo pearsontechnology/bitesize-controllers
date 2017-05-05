@@ -36,10 +36,9 @@ COPY dhparam.pem /etc/nginx/certs/
 
 # BITE-1428  - change user
 
-RUN touch /var/run/nginx.pid && chown -R nginx:nginx /var/run/nginx.pid && chown -R nginx:nginx /var/cache/nginx && \ 
-    chown -R nginx:nginx /controller && chown -R nginx:nginx /etc/nginx/nginx.conf && chown -R nginx:nginx /usr/bin/run.sh && \
-    chown -R nginx:nginx /etc/nginx && chown -R nginx:nginx /usr/share/nginx/html && chown -R nginx:nginx /etc/nginx/certs && \
-    chown -R nginx:nginx /etc/ssl/certs && chown -R nginx:nginx /etc/nginx/conf.d && mkdir -p /nonexistent && chown -R nginx:nginx /nonexistent
+RUN touch /var/run/nginx.pid && mkdir -p /nonexistent && \ 
+    chown -R nginx:nginx /var/run/nginx.pid /var/cache/nginx /controller /etc/nginx/nginx.conf /usr/bin/run.sh \
+    /etc/nginx /usr/share/nginx/html /etc/nginx/certs /etc/ssl/certs /etc/nginx/conf.d /nonexistent 
     
 # BITE-1428 - change user
 
