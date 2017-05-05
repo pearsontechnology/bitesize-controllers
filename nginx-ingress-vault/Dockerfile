@@ -16,7 +16,6 @@
 FROM nginx:1.13.0
 
 # BITE-1428 - change user
-
 USER root
 
 RUN apt update && apt install -y openssl && apt clean
@@ -35,13 +34,11 @@ COPY favicon.ico /usr/share/nginx/html/
 COPY dhparam.pem /etc/nginx/certs/
 
 # BITE-1428  - change user
-
 RUN touch /var/run/nginx.pid && mkdir -p /nonexistent && \ 
     chown -R nginx:nginx /var/run/nginx.pid /var/cache/nginx /controller /etc/nginx/nginx.conf /usr/bin/run.sh \
     /etc/nginx /usr/share/nginx/html /etc/nginx/certs /etc/ssl/certs /etc/nginx/conf.d /nonexistent 
     
 # BITE-1428 - change user
-
 USER nginx
 
 CMD ["/usr/bin/run.sh"]
