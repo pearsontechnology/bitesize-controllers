@@ -14,7 +14,7 @@
 # BITE-1345 image source previously gcr.io/google-containers/nginx:latest
 
 FROM nginx:1.13.0
-RUN apt update && apt install -y openssl
+RUN apt update && apt install -y openssl procps
 COPY controller /
 COPY default.conf /etc/nginx/nginx.conf
 COPY /run.sh /usr/bin/run.sh
