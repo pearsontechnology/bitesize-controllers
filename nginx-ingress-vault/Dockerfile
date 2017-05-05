@@ -13,8 +13,12 @@
 # limitations under the License.
 # BITE-1345 image source previously gcr.io/google-containers/nginx:latest
 
-FROM nginx:latest
+FROM nginx:1.13.0
 
+# BITE-1428 - change user
+USER root
+
+RUN apt update && apt install -y openssl && apt clean
 COPY controller /
 COPY default.conf /etc/nginx/nginx.conf
 COPY /run.sh /usr/bin/run.sh
@@ -28,5 +32,13 @@ COPY pearson_logo.png /usr/share/nginx/html/
 COPY favicon.ico /usr/share/nginx/html/
 # BITE-1345
 COPY dhparam.pem /etc/nginx/certs/
+
+# BITE-1428  - change user
+RUN touch /var/run/nginx.pid && mkdir -p /nonexistent && \ 
+    chown -R nginx:nginx /var/run/nginx.pid /var/cache/nginx /controller /etc/nginx/nginx.conf /usr/bin/run.sh \
+    /etc/nginx /usr/share/nginx/html /etc/nginx/certs /etc/ssl/certs /etc/nginx/conf.d /nonexistent 
+    
+# BITE-1428 - change user
+USER nginx
 
 CMD ["/usr/bin/run.sh"]

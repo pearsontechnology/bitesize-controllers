@@ -23,6 +23,12 @@ CODE_VERSION=$VERSION
 PUBLISHED_TAGS=`wget -q https://registry.hub.docker.com/v1/repositories/$REPOSITORY/tags -O - | jq ".[].name" -r`
 PUBLISHED_VERSIONS=`echo $PUBLISHED_TAGS | grep -oEi "[0-9]+\.[0-9]+\.[0-9]+"`
 TAG=$VERSION
+STABLE_NGINX_VERSION=`curl -s https://index.docker.io/v1/repositories/nginx/tags | jq -r '( .[].name )' | grep '^[0-9]*\.[0-9]*\.[0-9]*$' | sort -V | tail -1`
+CURRENT_NGINX_VERSION=`grep FROM Dockerfile | awk -F ':' '{ print $2 }'`
+
+function version_gt() {
+  test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1";
+}
 
 Showhelp () {
   echo "build.sh <options>"
@@ -42,6 +48,10 @@ Showhelp () {
   echo "    --dry-run - Perform a dry run, nothing will actually change, but all commands will be output"
   exit 0
 }
+
+if version_gt $STABLE_NGINX_VERSION $CURRENT_NGINX_VERSION; then
+     echo -e "\033[33mNginx base image version $STABLE_NGINX_VERSION is available on Dockerhub. Please consider upgrading the ingress Dockerfile.\033[0m"
+fi
 
 while [[ $# > 0 ]]
 do
