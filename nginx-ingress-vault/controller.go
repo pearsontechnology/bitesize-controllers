@@ -34,7 +34,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-const version = "bite1469"
+const version = "1.8.10"
 
 func main() {
 
