@@ -17,104 +17,108 @@ limitations under the License.
 package main
 
 import (
-	"os"
-	"reflect"
+    "reflect"
+    "os"
+    "k8s.io/client-go/1.4/kubernetes"
+    "k8s.io/client-go/1.4/pkg/api"
+    "k8s.io/client-go/1.4/rest"
+    "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
-	"k8s.io/client-go/1.4/kubernetes"
-	"k8s.io/client-go/1.4/pkg/api"
-	"k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
-	"k8s.io/client-go/1.4/rest"
+    "k8s.io/kubernetes/pkg/util/flowcontrol"
+    "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/nginx"
+    vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
 
-	"github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/nginx"
-	vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
-	"k8s.io/kubernetes/pkg/util/flowcontrol"
+    "github.com/quipo/statsd"
 
-	"github.com/quipo/statsd"
-
-	log "github.com/Sirupsen/logrus"
+    log "github.com/Sirupsen/logrus"
 )
 
+<<<<<<< HEAD
 const version = "1.8.10"
+=======
+const version = "1.8.8"
+>>>>>>> parent of 29842f0... Update nginx controller nginx.conf template to use local host for resolver so sidecar dnsmasq is utilized for resolution and not kube-dns.
 
 func main() {
 
-	log.SetFormatter(&log.JSONFormatter{})
+    log.SetFormatter(&log.JSONFormatter{})
 
-	debug := os.Getenv("DEBUG")
-	if debug == "true" {
-		log.SetLevel(log.DebugLevel)
-	}
+    debug := os.Getenv("DEBUG")
+    if debug == "true" {
+        log.SetLevel(log.DebugLevel)
+    }
 
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		log.Fatalf("Failed to create client: %v", err.Error())
-	}
+    config, err := rest.InClusterConfig()
+    if err != nil {
+        log.Fatalf("Failed to create client: %v", err.Error())
+    }
 
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("Failed to create client: %v", err.Error())
-	}
+    clientset, err := kubernetes.NewForConfig(config)
+    if err != nil {
+        log.Fatalf("Failed to create client: %v", err.Error())
+    }
 
-	stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
+    stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
 
-	log.Infof("\n Ingress Controller version: %v", version)
+    log.Infof("\n Ingress Controller version: %v", version)
 
-	rateLimiter := flowcontrol.NewTokenBucketRateLimiter(0.1, 1)
-	known := &v1beta1.IngressList{}
+    rateLimiter := flowcontrol.NewTokenBucketRateLimiter(0.1, 1)
+    known := &v1beta1.IngressList{}
 
-	vault, _ := vlt.NewVaultReader()
-	if vault.Enabled {
-		go vault.RenewToken()
-	}
+    vault, _ := vlt.NewVaultReader()
+    if vault.Enabled {
+        go vault.RenewToken()
+    }
 
-	// Controller loop
-	for {
-		rateLimiter.Accept()
+    // Controller loop
+    for {
+        rateLimiter.Accept()
 
-		if !vault.Ready() {
-			continue
-		}
+        if !vault.Ready() {
+            continue
+        }
 
-		ingresses, err := clientset.Extensions().Ingresses("").List(api.ListOptions{})
+        ingresses, err := clientset.Extensions().Ingresses("").List(api.ListOptions{})
 
-		if err != nil {
-			log.Errorf("Error retrieving ingresses: %v", err)
-			continue
-		}
-		if reflect.DeepEqual(ingresses.Items, known.Items) {
-			continue
-		}
-		known = ingresses
+        if err != nil {
+            log.Errorf("Error retrieving ingresses: %v", err)
+            continue
+        }
+        if reflect.DeepEqual(ingresses.Items, known.Items) {
+            continue
+        }
+        known = ingresses
 
-		var virtualHosts = []*nginx.VirtualHost{}
+        var virtualHosts = []*nginx.VirtualHost{}
 
-		for _, ingress := range ingresses.Items {
-			vhost, _ := nginx.NewVirtualHost(ingress, vault)
-			vhost.CollectPaths()
 
-			if err = vhost.CreateVaultCerts(); err != nil {
-				log.Errorf("%s\n", err.Error())
-			}
-			if len(vhost.Paths) > 0 {
-				virtualHosts = append(virtualHosts, vhost)
-			}
-		}
+        for _, ingress := range ingresses.Items {
+            vhost,_ := nginx.NewVirtualHost(ingress, vault)
+            vhost.CollectPaths()
 
-		nginx.WriteConfig(virtualHosts)
-		// cops-165 - Generate custom error page per vhost
-		nginx.WriteCustomErrorPages(virtualHosts)
+            if err = vhost.CreateVaultCerts(); err != nil {
+                log.Errorf("%s\n", err.Error() )
+            }
+            if len(vhost.Paths) > 0 {
+                virtualHosts = append(virtualHosts, vhost)
+            }
+        }
 
-		err = nginx.Verify()
+        nginx.WriteConfig(virtualHosts)
+        // cops-165 - Generate custom error page per vhost
+        nginx.WriteCustomErrorPages(virtualHosts)
 
-		stats.Incr("reload", 1)
+        err = nginx.Verify()
 
-		if err != nil {
-			log.Errorf("ERR: nginx config failed validation: %v", err)
-			log.Infof("Sent config error notification to statsd.")
-			stats.Incr("error", 1)
-		} else {
-			nginx.Start()
-			log.Infof("nginx config updated.")
-		}
-	}
+        stats.Incr("reload", 1)
+
+        if err != nil {
+            log.Errorf("ERR: nginx config failed validation: %v", err)
+            log.Infof("Sent config error notification to statsd.")
+            stats.Incr("error", 1)
+        } else {
+            nginx.Start()
+            log.Infof("nginx config updated.")
+        }
+    }
 }
