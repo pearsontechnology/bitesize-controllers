@@ -135,6 +135,14 @@ func (vhost *VirtualHost) GetPodName() string {
     return os.Getenv("POD_NAME")
 }
 
+func (vhost *VirtualHost) GetResolver() string {
+    return os.Getenv("RESOLVER")
+}
+
+func (vhost *VirtualHost) GetResolverPort() string {
+    return os.Getenv("RESOLVER_PORT")
+}
+
 func (vhost *VirtualHost) DefaultUrl(path Path) string {
     return fmt.Sprintf("%s://%s.%s.svc.cluster.local:%d", vhost.Scheme, path.Service, vhost.Namespace, path.Port)
 }
@@ -156,4 +164,3 @@ func newHTTPClient(dest *url.URL) *http.Client {
     }
     return &http.Client{}
 }
-
