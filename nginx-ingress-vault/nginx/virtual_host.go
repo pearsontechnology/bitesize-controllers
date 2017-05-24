@@ -36,7 +36,7 @@ func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHo
     resolver := os.Getenv("DNS_RESOLVER")
 
     if resolver == "" {
-        resolver = "127.0.0.1"
+        resolver = "172.17.0.1"
     }
 
     vhost := &VirtualHost{
