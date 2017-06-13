@@ -84,7 +84,7 @@ http {
     # cops-479 - Add 301 redirect if httpsOnly is set to true.
     listen  80;
     server_name {{$i.Host}};
-    resolver kube-dns.kube-system.svc.cluster.local;
+    resolver {{$i.GetResolver}}:{{$i.GetResolverPort}};
     return  301  https://$server_name$request_uri;
   }
   {{end}}{{/* if not $i.Nonssl */}}
@@ -93,7 +93,7 @@ http {
     # BITE-1446 NGINX security improvements - Remove NGINX version number
     server_tokens off;
     server_name {{$i.Host}};
-    resolver kube-dns.kube-system.svc.cluster.local;
+    resolver {{$i.GetResolver}}:{{$i.GetResolverPort}};
     {{if $i.Ssl}}
     listen 443 ssl;
     ssl_certificate   /etc/nginx/certs/{{$i.Host}}.crt;
