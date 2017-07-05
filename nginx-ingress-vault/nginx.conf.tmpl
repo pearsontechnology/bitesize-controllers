@@ -29,11 +29,11 @@ http {
   add_header X-Content-Type-Options nosniff;
   add_header X-XSS-Protection "1; mode=block";
 
-  log_format proxied_combined '"$http_x_forwarded_for" - $remote_user [$time_local] "$request" '
+  log_format proxied_combined '"$http_x_forwarded_for" - $http_host $remote_user [$time_local] "$request" '
                       '$status $body_bytes_sent "$http_referer" '
                       '"$http_user_agent" $request_time';
 
-  error_log /dev/stderr info;
+  error_log /dev/stderr error;
   access_log /dev/stdout proxied_combined;
 
   server {
@@ -84,7 +84,7 @@ http {
     # cops-479 - Add 301 redirect if httpsOnly is set to true.
     listen  80;
     server_name {{$i.Host}};
-    resolver {{$i.Resolver}};
+    resolver {{$i.GetResolver}}:{{$i.GetResolverPort}};
     return  301  https://$server_name$request_uri;
   }
   {{end}}{{/* if not $i.Nonssl */}}
@@ -93,7 +93,7 @@ http {
     # BITE-1446 NGINX security improvements - Remove NGINX version number
     server_tokens off;
     server_name {{$i.Host}};
-    resolver {{$i.Resolver}};
+    resolver {{$i.GetResolver}}:{{$i.GetResolverPort}};
     {{if $i.Ssl}}
     listen 443 ssl;
     ssl_certificate   /etc/nginx/certs/{{$i.Host}}.crt;

@@ -92,7 +92,7 @@ func main() {
             vhost,_ := nginx.NewVirtualHost(ingress, vault)
             vhost.CollectPaths()
 
-            if err = vhost.ValidateVirtualHost(); err != nil {
+            if err = vhost.Validate(); err != nil {
                 log.Errorf("Ingress %s failed validation: %s", vhost.Name, err.Error() )
                 continue
             }

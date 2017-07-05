@@ -26,7 +26,6 @@ type VirtualHost struct {
     Ingress   v1beta1.Ingress
     Vault     *vlt.VaultReader
     BlueGreen bool
-    Resolver  string
 }
 
 // NewVirtualHost returns virtual host instance
@@ -34,12 +33,6 @@ func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHo
     name := strings.Replace(ingress.ObjectMeta.Name, "-","_",-1) +
             "_" +
             strings.Replace(ingress.Namespace, "-", "_", -1)
-
-    resolver := os.Getenv("DNS_RESOLVER")
-
-    if resolver == "" {
-        resolver = "172.17.0.1"
-    }
 
     vhost := &VirtualHost{
         Name: name,
@@ -50,7 +43,6 @@ func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHo
         Scheme: "http",
         Ingress: ingress,
         BlueGreen: false,
-        Resolver: resolver,
     }
 
     vhost.Vault = vault
@@ -145,6 +137,14 @@ func (vhost *VirtualHost) GetPodName() string {
     return os.Getenv("POD_NAME")
 }
 
+func (vhost *VirtualHost) GetResolver() string {
+    return os.Getenv("RESOLVER")
+}
+
+func (vhost *VirtualHost) GetResolverPort() string {
+    return os.Getenv("RESOLVER_PORT")
+}
+
 func (vhost *VirtualHost) DefaultUrl(path Path) string {
     return fmt.Sprintf("%s://%s.%s.svc.cluster.local:%d", vhost.Scheme, path.Service, vhost.Namespace, path.Port)
 }
@@ -167,7 +167,7 @@ func newHTTPClient(dest *url.URL) *http.Client {
     return &http.Client{}
 }
 
-func (vhost *VirtualHost) ValidateVirtualHost() error {
+func (vhost *VirtualHost) Validate() error {
 
     schemeRegex, _ := regexp.Compile("^https?$")
     hostRegex, _ := regexp.Compile("[a-z\\d+].*?\\.\\w{2,8}$")
