@@ -133,16 +133,25 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
 
 // cops-374 - Get Nginx pod name and pass it to the nginx.conf.tmpl
 // to generate the X-Loadbalancer-Id in runtime.
+
+func getenv(key, fallback string) string {
+    value := os.Getenv(key)
+    if len(value) == 0 {
+        return fallback
+    }
+    return value
+}
+
 func (vhost *VirtualHost) GetPodName() string {
-    return os.Getenv("POD_NAME")
+    return getenv("POD_NAME", "nginx-ingress")
 }
 
 func (vhost *VirtualHost) GetResolver() string {
-    return os.Getenv("RESOLVER")
+    return getenv("RESOLVER", "127.0.0.1")
 }
 
 func (vhost *VirtualHost) GetResolverPort() string {
-    return os.Getenv("RESOLVER_PORT")
+    return getenv("RESOLVER_PORT", "53")
 }
 
 func (vhost *VirtualHost) DefaultUrl(path Path) string {
