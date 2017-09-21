@@ -8,6 +8,8 @@ import (
     "net/http"
     "strings"
     "crypto/tls"
+    "reflect"
+    "regexp"
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
     vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
@@ -131,16 +133,25 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
 
 // cops-374 - Get Nginx pod name and pass it to the nginx.conf.tmpl
 // to generate the X-Loadbalancer-Id in runtime.
+
+func getenv(key, fallback string) string {
+    value := os.Getenv(key)
+    if len(value) == 0 {
+        return fallback
+    }
+    return value
+}
+
 func (vhost *VirtualHost) GetPodName() string {
-    return os.Getenv("POD_NAME")
+    return getenv("POD_NAME", "nginx-ingress")
 }
 
 func (vhost *VirtualHost) GetResolver() string {
-    return os.Getenv("RESOLVER")
+    return getenv("RESOLVER", "127.0.0.1")
 }
 
 func (vhost *VirtualHost) GetResolverPort() string {
-    return os.Getenv("RESOLVER_PORT")
+    return getenv("RESOLVER_PORT", "53")
 }
 
 func (vhost *VirtualHost) DefaultUrl(path Path) string {
@@ -163,4 +174,36 @@ func newHTTPClient(dest *url.URL) *http.Client {
         return &http.Client{Transport: tr}
     }
     return &http.Client{}
+}
+
+func (vhost *VirtualHost) Validate() error {
+
+    schemeRegex, _ := regexp.Compile("^https?$")
+    hostRegex, _ := regexp.Compile("[a-z\\d+].*?\\.\\w{2,8}$")
+
+    if reflect.TypeOf(vhost.Name).String() != "string" || vhost.Name == "" {
+        return fmt.Errorf("Name must be set")
+    }
+    if reflect.TypeOf(vhost.Host).String() != "string" || hostRegex.MatchString(reflect.ValueOf(vhost.Host).String()) != true {
+        return fmt.Errorf("Host must be set")
+    }
+    if reflect.TypeOf(vhost.Namespace).String() != "string" || vhost.Namespace == "" {
+        return fmt.Errorf("Namespace must be set")
+    }
+    if reflect.TypeOf(vhost.Scheme).String() != "string" || schemeRegex.MatchString(reflect.ValueOf(vhost.Scheme).String()) != true {
+        return fmt.Errorf("Scheme must be set")
+    }
+    if reflect.TypeOf(vhost.Ssl).String() != "bool" {
+        return fmt.Errorf("Ssl label must be true; false")
+    }
+    if reflect.TypeOf(vhost.Nonssl).String() != "bool" {
+        return fmt.Errorf("Nonssl label must be true; false")
+    }
+    if reflect.TypeOf(vhost.BlueGreen).String() != "bool" {
+        return fmt.Errorf("BlueGreen label must be true; false")
+    }
+    if reflect.TypeOf(vhost.Paths).String() != "[]*nginx.Path" || vhost.Paths == nil {
+        return fmt.Errorf("Paths must be set")
+    }
+    return nil
 }
