@@ -7,6 +7,8 @@ import (
     "time"
     vault "github.com/hashicorp/vault/api"
     log "github.com/Sirupsen/logrus"
+    "k8s.io/client-go/1.4/kubernetes"
+    "k8s.io/client-go/1.4/rest"
 )
 
 type VaultReader struct {
@@ -20,11 +22,54 @@ type Cert struct {
     Secret string
 }
 
+func getSecret(secretKey string)(secretValue string) {
+
+    namespace := os.Getenv("POD_NAMESPACE")
+
+    config, err := rest.InClusterConfig()
+    if err != nil {
+        log.Fatalf("Failed to create client: %v", err.Error())
+    }
+
+    clientset, err := kubernetes.NewForConfig(config)
+
+    if err != nil {
+        log.Fatalf("Failed to create client: %v", err.Error())
+    }
+
+    secrets, err := clientset.Core().Secrets(namespace).Get(secretKey)
+
+    if err != nil {
+        log.Errorf("Error retrieving secrets: %v", err)
+        return ""
+    }
+
+    for name, data := range secrets.Data {
+        //secret[name] = string(data)
+        if name == secretKey {
+            secretValue = string(data)
+            log.Infof("Found VAULT_TOKEN_SECRET secret: %s", name)
+        } else {
+            secretValue = ""
+        }
+    }
+
+    return secretValue
+}
+
 func NewVaultReader() (*VaultReader, error) {
     enabledFlag := os.Getenv("VAULT_ENABLED")
     address := os.Getenv("VAULT_ADDR")
-    token := os.Getenv("VAULT_TOKEN")
     refreshFlag := os.Getenv("VAULT_REFRESH_INTERVAL")
+    token := os.Getenv("VAULT_TOKEN")
+    if token == "" {
+        secretKey := os.Getenv("VAULT_TOKEN_SECRET")
+          if secretKey == "" {
+              enabledFlag = "false"
+          } else {
+              token = getSecret(secretKey)
+          }
+    }
 
     refreshInterval, err := strconv.Atoi(refreshFlag)
     if err != nil {
@@ -48,7 +93,7 @@ func NewVaultReader() (*VaultReader, error) {
     }
 
     // Needs VaultReady
-
+    client.SetToken(token)
     return &VaultReader{
         Enabled: enabled,
         Client: client,
