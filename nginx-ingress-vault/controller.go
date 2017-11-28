@@ -33,7 +33,34 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.9.3"
+const version = "1.9.5"
+
+func getIngresses(onKubernetes bool) (ingresses *v1beta1.IngressList, ingressError error) {
+
+    ingresses = &v1beta1.IngressList{}
+    var err error
+
+    if onKubernetes == true {
+        config, err := rest.InClusterConfig()
+
+        if err != nil {
+            log.Fatalf("Failed to create client: %v", err.Error())
+        }
+
+        clientset, err := kubernetes.NewForConfig(config)
+
+        if err != nil {
+            log.Fatalf("Failed to create client: %v", err.Error())
+        }
+
+        rateLimiter := flowcontrol.NewTokenBucketRateLimiter(0.1, 1)
+
+        rateLimiter.Accept()
+        ingresses, err = clientset.Extensions().Ingresses("").List(api.ListOptions{})
+
+    }
+    return ingresses, err
+}
 
 func main() {
 
@@ -44,49 +71,43 @@ func main() {
         log.SetLevel(log.DebugLevel)
     }
 
-    config, err := rest.InClusterConfig()
-    if err != nil {
-        log.Fatalf("Failed to create client: %v", err.Error())
-    }
+    onKubernetes := true
 
-    clientset, err := kubernetes.NewForConfig(config)
-    if err != nil {
-        log.Fatalf("Failed to create client: %v", err.Error())
+    if os.Getenv("KUBERNETES_SERVICE_HOST") == "" {
+        log.Errorf("WARN: NOT running on Kubernetes, ingress functionality will be DISABLED")
+        onKubernetes = false
     }
 
     stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
 
     log.Infof("\n Ingress Controller version: %v", version)
 
-    rateLimiter := flowcontrol.NewTokenBucketRateLimiter(0.1, 1)
-    known := &v1beta1.IngressList{}
-
     vault, _ := vlt.NewVaultReader()
     if vault.Enabled {
         go vault.RenewToken()
     }
 
+    known := &v1beta1.IngressList{}
+
     // Controller loop
     for {
-        rateLimiter.Accept()
 
         if !vault.Ready() {
             continue
         }
 
-        ingresses, err := clientset.Extensions().Ingresses("").List(api.ListOptions{})
+        ingresses ,err := getIngresses(onKubernetes)
 
         if err != nil {
             log.Errorf("Error retrieving ingresses: %v", err)
             continue
         }
+
         if reflect.DeepEqual(ingresses.Items, known.Items) {
             continue
         }
-        known = ingresses
 
         var virtualHosts = []*nginx.VirtualHost{}
-
 
         for _, ingress := range ingresses.Items {
             vhost,_ := nginx.NewVirtualHost(ingress, vault)
@@ -99,6 +120,7 @@ func main() {
 
             if err = vhost.CreateVaultCerts(); err != nil {
                 log.Errorf("%s\n", err.Error() )
+                vhost.Ssl = false
             }
             if len(vhost.Paths) > 0 {
                 virtualHosts = append(virtualHosts, vhost)
@@ -120,6 +142,7 @@ func main() {
         } else {
             nginx.Start()
             log.Infof("nginx config updated.")
+            known = ingresses
         }
     }
 }
