@@ -19,6 +19,8 @@ package main
 import (
     "reflect"
     "os"
+    "time"
+    "strconv"
     "k8s.io/client-go/1.4/kubernetes"
     "k8s.io/client-go/1.4/pkg/api"
     "k8s.io/client-go/1.4/rest"
@@ -71,6 +73,16 @@ func main() {
         log.SetLevel(log.DebugLevel)
     }
 
+    log.Infof("\n Ingress Controller version: %v", version)
+
+	var reloadFrequency int
+    v := os.Getenv("RELOAD_FREQUENCY")
+	i, err := strconv.Atoi(v)
+    if err != nil || v  == "" {
+        reloadFrequency = 5
+	} else {
+        reloadFrequency = i
+	}
     onKubernetes := true
 
     if os.Getenv("KUBERNETES_SERVICE_HOST") == "" {
@@ -79,8 +91,6 @@ func main() {
     }
 
     stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
-
-    log.Infof("\n Ingress Controller version: %v", version)
 
     vault, _ := vlt.NewVaultReader()
     if vault.Enabled {
@@ -144,5 +154,8 @@ func main() {
             log.Infof("nginx config updated.")
             known = ingresses
         }
+
+        time.Sleep(time.Duration(reloadFrequency) * time.Second)
+
     }
 }

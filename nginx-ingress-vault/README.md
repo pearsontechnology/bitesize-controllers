@@ -125,6 +125,7 @@ spec:
 ```
 
 Note the secret volume setup and `VAULT_` environment variables.
+There is also an optional RELOAD_FREQUENCY env value. Defaults to 5 (secs).
 
 ## Deploying an ingress:
 
