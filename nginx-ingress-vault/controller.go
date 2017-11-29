@@ -75,16 +75,16 @@ func main() {
 
     log.Infof("\n Ingress Controller version: %v", version)
 
-	var reloadFrequency int
+    var reloadFrequency int
     v := os.Getenv("RELOAD_FREQUENCY")
-	i, err := strconv.Atoi(v)
+    i, err := strconv.Atoi(v)
     if err != nil || v  == "" {
         reloadFrequency = 5
-	} else {
+    } else {
         reloadFrequency = i
-	}
-    onKubernetes := true
+    }
 
+    onKubernetes := true
     if os.Getenv("KUBERNETES_SERVICE_HOST") == "" {
         log.Errorf("WARN: NOT running on Kubernetes, ingress functionality will be DISABLED")
         onKubernetes = false
