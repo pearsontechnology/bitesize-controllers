@@ -24,6 +24,11 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
           - name: "VAULT_ADDR"
             value: "http://vault.kube-system.svc.cluster.local:8243"
           - name: "VAULT_SKIP_VERIFY"
