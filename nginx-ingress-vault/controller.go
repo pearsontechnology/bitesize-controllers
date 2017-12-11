@@ -77,11 +77,9 @@ func main() {
 
     var reloadFrequency int
     v := os.Getenv("RELOAD_FREQUENCY")
-    i, err := strconv.Atoi(v)
+    reloadFrequency, err := time.ParseDuration(v)
     if err != nil || v  == "" {
-        reloadFrequency = 5
-    } else {
-        reloadFrequency = i
+        reloadFrequency = time.ParseDuration("5s")
     }
 
     onKubernetes := true
@@ -155,7 +153,7 @@ func main() {
             known = ingresses
         }
 
-        time.Sleep(time.Duration(reloadFrequency) * time.Second)
+        time.Sleep(reloadFrequency)
 
     }
 }
