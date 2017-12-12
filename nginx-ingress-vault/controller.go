@@ -34,7 +34,7 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.9.6"
+const version = "1.9.5"
 
 func getIngresses(onKubernetes bool) (ingresses *v1beta1.IngressList, ingressError error) {
 
