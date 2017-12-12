@@ -20,7 +20,6 @@ import (
     "reflect"
     "os"
     "time"
-    "strconv"
     "k8s.io/client-go/1.4/kubernetes"
     "k8s.io/client-go/1.4/pkg/api"
     "k8s.io/client-go/1.4/rest"
@@ -35,7 +34,7 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.9.5"
+const version = "1.9.6"
 
 func getIngresses(onKubernetes bool) (ingresses *v1beta1.IngressList, ingressError error) {
 
@@ -75,11 +74,10 @@ func main() {
 
     log.Infof("\n Ingress Controller version: %v", version)
 
-    var reloadFrequency int
     v := os.Getenv("RELOAD_FREQUENCY")
     reloadFrequency, err := time.ParseDuration(v)
     if err != nil || v  == "" {
-        reloadFrequency = time.ParseDuration("5s")
+        reloadFrequency, _ = time.ParseDuration("5s")
     }
 
     onKubernetes := true
