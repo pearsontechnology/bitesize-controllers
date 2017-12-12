@@ -20,14 +20,11 @@ import (
     "reflect"
     "os"
     "time"
-    "k8s.io/client-go/1.4/kubernetes"
-    "k8s.io/client-go/1.4/pkg/api"
-    "k8s.io/client-go/1.4/rest"
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
-    "k8s.io/kubernetes/pkg/util/flowcontrol"
     "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/nginx"
     vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
+    k8s "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/kubernetes"
 
     "github.com/quipo/statsd"
 
@@ -35,33 +32,6 @@ import (
 )
 
 const version = "1.9.5"
-
-func getIngresses(onKubernetes bool) (ingresses *v1beta1.IngressList, ingressError error) {
-
-    ingresses = &v1beta1.IngressList{}
-    var err error
-
-    if onKubernetes == true {
-        config, err := rest.InClusterConfig()
-
-        if err != nil {
-            log.Fatalf("Failed to create client: %v", err.Error())
-        }
-
-        clientset, err := kubernetes.NewForConfig(config)
-
-        if err != nil {
-            log.Fatalf("Failed to create client: %v", err.Error())
-        }
-
-        rateLimiter := flowcontrol.NewTokenBucketRateLimiter(0.1, 1)
-
-        rateLimiter.Accept()
-        ingresses, err = clientset.Extensions().Ingresses("").List(api.ListOptions{})
-
-    }
-    return ingresses, err
-}
 
 func main() {
 
@@ -102,7 +72,7 @@ func main() {
             continue
         }
 
-        ingresses ,err := getIngresses(onKubernetes)
+        ingresses, err := k8s.GetIngresses(onKubernetes)
 
         if err != nil {
             log.Errorf("Error retrieving ingresses: %v", err)
