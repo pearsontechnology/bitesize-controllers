@@ -19,48 +19,19 @@ package main
 import (
     "reflect"
     "os"
-    "k8s.io/client-go/1.4/kubernetes"
-    "k8s.io/client-go/1.4/pkg/api"
-    "k8s.io/client-go/1.4/rest"
+    "time"
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
-    "k8s.io/kubernetes/pkg/util/flowcontrol"
     "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/nginx"
     vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
+    k8s "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/kubernetes"
 
     "github.com/quipo/statsd"
 
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.9.4"
-
-func getIngresses(onKubernetes bool) (ingresses *v1beta1.IngressList, ingressError error) {
-
-    ingresses = &v1beta1.IngressList{}
-    var err error
-
-    if onKubernetes == true {
-        config, err := rest.InClusterConfig()
-
-        if err != nil {
-            log.Fatalf("Failed to create client: %v", err.Error())
-        }
-
-        clientset, err := kubernetes.NewForConfig(config)
-
-        if err != nil {
-            log.Fatalf("Failed to create client: %v", err.Error())
-        }
-
-        rateLimiter := flowcontrol.NewTokenBucketRateLimiter(0.1, 1)
-
-        rateLimiter.Accept()
-        ingresses, err = clientset.Extensions().Ingresses("").List(api.ListOptions{})
-
-    }
-    return ingresses, err
-}
+const version = "1.9.5"
 
 func main() {
 
@@ -71,16 +42,21 @@ func main() {
         log.SetLevel(log.DebugLevel)
     }
 
-    onKubernetes := true
+    log.Infof("\n Ingress Controller version: %v", version)
 
+    v := os.Getenv("RELOAD_FREQUENCY")
+    reloadFrequency, err := time.ParseDuration(v)
+    if err != nil || v  == "" {
+        reloadFrequency, _ = time.ParseDuration("5s")
+    }
+
+    onKubernetes := true
     if os.Getenv("KUBERNETES_SERVICE_HOST") == "" {
         log.Errorf("WARN: NOT running on Kubernetes, ingress functionality will be DISABLED")
         onKubernetes = false
     }
 
     stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
-
-    log.Infof("\n Ingress Controller version: %v", version)
 
     vault, _ := vlt.NewVaultReader()
     if vault.Enabled {
@@ -96,7 +72,7 @@ func main() {
             continue
         }
 
-        ingresses ,err := getIngresses(onKubernetes)
+        ingresses, err := k8s.GetIngresses(onKubernetes)
 
         if err != nil {
             log.Errorf("Error retrieving ingresses: %v", err)
@@ -120,6 +96,7 @@ func main() {
 
             if err = vhost.CreateVaultCerts(); err != nil {
                 log.Errorf("%s\n", err.Error() )
+                vhost.Ssl = false
             }
             if len(vhost.Paths) > 0 {
                 virtualHosts = append(virtualHosts, vhost)
@@ -143,5 +120,8 @@ func main() {
             log.Infof("nginx config updated.")
             known = ingresses
         }
+
+        time.Sleep(reloadFrequency)
+
     }
 }

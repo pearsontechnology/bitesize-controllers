@@ -22,7 +22,17 @@ type Cert struct {
     Secret string
 }
 
-func getSecret(secretKey string)(secretValue string) {
+func getToken()(token string) {
+
+    token = os.Getenv("VAULT_TOKEN")
+    secretKey := os.Getenv("VAULT_TOKEN_SECRET")
+    if token == "" {
+        if secretKey == "" {
+            return token
+        }
+    } else {
+        return token
+    }
 
     namespace := os.Getenv("POD_NAMESPACE")
 
@@ -47,28 +57,22 @@ func getSecret(secretKey string)(secretValue string) {
     for name, data := range secrets.Data {
         //secret[name] = string(data)
         if name == secretKey {
-            secretValue = string(data)
+            token = string(data)
             log.Infof("Found VAULT_TOKEN_SECRET secret: %s", name)
-        } else {
-            secretValue = ""
         }
     }
 
-    return secretValue
+    return token
 }
 
 func NewVaultReader() (*VaultReader, error) {
     enabledFlag := os.Getenv("VAULT_ENABLED")
     address := os.Getenv("VAULT_ADDR")
     refreshFlag := os.Getenv("VAULT_REFRESH_INTERVAL")
-    token := os.Getenv("VAULT_TOKEN")
+    token := getToken()
+
     if token == "" {
-        secretKey := os.Getenv("VAULT_TOKEN_SECRET")
-          if secretKey == "" {
-              enabledFlag = "false"
-          } else {
-              token = getSecret(secretKey)
-          }
+        enabledFlag = "false"
     }
 
     refreshInterval, err := strconv.Atoi(refreshFlag)
