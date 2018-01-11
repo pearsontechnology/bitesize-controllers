@@ -58,15 +58,22 @@ func main() {
 
     stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
 
+    known := &v1beta1.IngressList{}
+
     vault, _ := vlt.NewVaultReader()
     if vault.Enabled {
         go vault.RenewToken()
     }
 
-    known := &v1beta1.IngressList{}
-
     // Controller loop
     for {
+
+        time.Sleep(reloadFrequency)
+
+        vault, _ = vlt.NewVaultReader()
+        if vault.Enabled {
+            go vault.RenewToken()
+        }
 
         if !vault.Ready() {
             continue
@@ -120,8 +127,6 @@ func main() {
             log.Infof("nginx config updated.")
             known = ingresses
         }
-
-        time.Sleep(reloadFrequency)
 
     }
 }
