@@ -75,6 +75,9 @@ func main() {
             if err !=nil {
                 continue
             }
+            // Reset existing ingress list to allow pull of ssl from vault
+            known = &v1beta1.IngressList{}
+            
             if vault.Enabled {
                 go vault.RenewToken()
             }
