@@ -75,6 +75,9 @@ func main() {
             if err !=nil {
                 continue
             }
+            if vault.Enabled {
+                go vault.RenewToken()
+            }
         }
 
         ingresses, err := k8s.GetIngresses(onKubernetes)
