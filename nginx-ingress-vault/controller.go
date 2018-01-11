@@ -31,7 +31,7 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.9.5"
+const version = "1.9.6"
 
 func main() {
 
@@ -70,13 +70,11 @@ func main() {
 
         time.Sleep(reloadFrequency)
 
-        vault, _ = vlt.NewVaultReader()
-        if vault.Enabled {
-            go vault.RenewToken()
-        }
-
         if !vault.Ready() {
-            continue
+            vault, err = vlt.NewVaultReader()
+            if err !=nil {
+                continue
+            }
         }
 
         ingresses, err := k8s.GetIngresses(onKubernetes)

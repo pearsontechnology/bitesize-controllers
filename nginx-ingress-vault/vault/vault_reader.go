@@ -6,6 +6,7 @@ import (
     "os"
     "time"
     "strings"
+    "errors"
     vault "github.com/hashicorp/vault/api"
     log "github.com/Sirupsen/logrus"
     "k8s.io/client-go/1.4/kubernetes"
@@ -85,14 +86,15 @@ func NewVaultReader() (*VaultReader, error) {
         refreshInterval = 10
     }
 
-    enabled, _ := strconv.ParseBool(enabledFlag)
+    enabled, err := strconv.ParseBool(enabledFlag)
     if err != nil {
         enabled = true
     }
 
     if address == "" || token == "" {
         log.Infof("Vault not configured")
-        return &VaultReader{ Enabled: false}, nil
+        err := errors.New("Address or Token null.")
+        return &VaultReader{ Enabled: false}, err
     }
 
     client, err := vault.NewClient(nil)
@@ -113,10 +115,10 @@ func NewVaultReader() (*VaultReader, error) {
 // Ready returns true if vault is unsealed and
 // ready to use
 func (r *VaultReader) Ready() bool {
-    if ! r.Enabled {
-        // always ready if we don't use it :)
-        return true
+    if r == nil || r.Client == nil {
+        return false
     }
+
     status, err := r.Client.Sys().SealStatus()
     if err != nil || status == nil {
         log.Info("Error retrieving vault status: %v, %v", status, err)

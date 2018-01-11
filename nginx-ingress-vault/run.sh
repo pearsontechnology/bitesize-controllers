@@ -39,7 +39,9 @@ if [ ${DEBUG} = "true" ]; then
 fi
 
 # BITE-2114 Switch to ClusterFirstWithHostNet once on k8s 1.6.x
-sed -i 's/^nameserver [0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}/nameserver 127.0.0.1/g' /etc/resolv.conf
+cp /etc/resolv.conf .
+sed -i 's/^nameserver [0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}/nameserver 127.0.0.1/g' ./resolv.conf
+cp -f ./resolv.conf /etc/resolv.conf
 
 exec /controller &
 pid=$!
