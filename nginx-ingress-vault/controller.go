@@ -31,7 +31,7 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.9.5"
+const version = "1.9.6"
 
 func main() {
 
@@ -58,18 +58,29 @@ func main() {
 
     stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
 
+    known := &v1beta1.IngressList{}
+
     vault, _ := vlt.NewVaultReader()
     if vault.Enabled {
         go vault.RenewToken()
     }
 
-    known := &v1beta1.IngressList{}
-
     // Controller loop
     for {
 
+        time.Sleep(reloadFrequency)
+
         if !vault.Ready() {
-            continue
+            vault, err = vlt.NewVaultReader()
+            if err !=nil {
+                continue
+            }
+            // Reset existing ingress list to allow pull of ssl from vault
+            known = &v1beta1.IngressList{}
+            
+            if vault.Enabled {
+                go vault.RenewToken()
+            }
         }
 
         ingresses, err := k8s.GetIngresses(onKubernetes)
@@ -120,8 +131,6 @@ func main() {
             log.Infof("nginx config updated.")
             known = ingresses
         }
-
-        time.Sleep(reloadFrequency)
 
     }
 }

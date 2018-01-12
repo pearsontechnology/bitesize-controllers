@@ -5,10 +5,13 @@ import (
     "strconv"
     "os"
     "time"
+    "strings"
+    "errors"
     vault "github.com/hashicorp/vault/api"
     log "github.com/Sirupsen/logrus"
     "k8s.io/client-go/1.4/kubernetes"
     "k8s.io/client-go/1.4/rest"
+    "github.com/google/uuid"
 )
 
 type VaultReader struct {
@@ -57,11 +60,14 @@ func getToken()(token string) {
     for name, data := range secrets.Data {
         //secret[name] = string(data)
         if name == secretKey {
-            token = string(data)
+            token = strings.TrimSpace(string(data))
             log.Infof("Found VAULT_TOKEN_SECRET secret: %s", name)
         }
     }
-
+    _, err = uuid.Parse(token)
+    if err != nil {
+        log.Errorf("Error parsing VAULT_TOKEN_SECRET: %v", token)
+    }
     return token
 }
 
@@ -80,14 +86,15 @@ func NewVaultReader() (*VaultReader, error) {
         refreshInterval = 10
     }
 
-    enabled, _ := strconv.ParseBool(enabledFlag)
+    enabled, err := strconv.ParseBool(enabledFlag)
     if err != nil {
         enabled = true
     }
 
     if address == "" || token == "" {
         log.Infof("Vault not configured")
-        return &VaultReader{ Enabled: false}, nil
+        err := errors.New("Address or Token null.")
+        return &VaultReader{ Enabled: false}, err
     }
 
     client, err := vault.NewClient(nil)
@@ -108,13 +115,13 @@ func NewVaultReader() (*VaultReader, error) {
 // Ready returns true if vault is unsealed and
 // ready to use
 func (r *VaultReader) Ready() bool {
-    if ! r.Enabled {
-        // always ready if we don't use it :)
-        return true
+    if r == nil || r.Client == nil {
+        return false
     }
+
     status, err := r.Client.Sys().SealStatus()
     if err != nil || status == nil {
-        log.Info("Error retrieving vault status")
+        log.Info("Error retrieving vault status: %v, %v", status, err)
         return false
     }
 
