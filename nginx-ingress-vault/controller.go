@@ -74,6 +74,9 @@ func main() {
                 time.Sleep(reloadFrequency)
                 continue
             }
+            if vault.Enabled {
+                go vault.RenewToken()
+            }    
         }
 
         if !vault.Ready() {
