@@ -31,7 +31,7 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.9.6"
+const version = "1.9.7"
 
 func main() {
 
@@ -68,20 +68,24 @@ func main() {
     // Controller loop
     for {
 
-        time.Sleep(reloadFrequency)
+        if !vault.Enabled {
+            vault, err = vlt.NewVaultReader()
+            if err != nil {
+                time.Sleep(reloadFrequency)
+                continue
+            }
+        }
 
         if !vault.Ready() {
             vault, err = vlt.NewVaultReader()
-            if err !=nil {
-                continue
-            }
+
             // Reset existing ingress list to allow pull of ssl from vault
             known = &v1beta1.IngressList{}
-            
-            if vault.Enabled {
-                go vault.RenewToken()
-            }
+            time.Sleep(reloadFrequency)
+            continue
         }
+
+        time.Sleep(reloadFrequency)
 
         ingresses, err := k8s.GetIngresses(onKubernetes)
 

@@ -25,16 +25,16 @@ type Cert struct {
     Secret string
 }
 
-func getToken()(token string) {
+func getToken() (token string, err error) {
 
     token = os.Getenv("VAULT_TOKEN")
     secretKey := os.Getenv("VAULT_TOKEN_SECRET")
     if token == "" {
         if secretKey == "" {
-            return token
+            return token, nil
         }
     } else {
-        return token
+        return token, nil
     }
 
     namespace := os.Getenv("POD_NAMESPACE")
@@ -54,7 +54,7 @@ func getToken()(token string) {
 
     if err != nil {
         log.Errorf("Error retrieving secrets: %v", err)
-        return ""
+        return "", nil
     }
 
     for name, data := range secrets.Data {
@@ -68,16 +68,18 @@ func getToken()(token string) {
     if err != nil {
         log.Errorf("Error parsing VAULT_TOKEN_SECRET: %v", token)
     }
-    return token
+    return token, err
 }
 
 func NewVaultReader() (*VaultReader, error) {
     enabledFlag := os.Getenv("VAULT_ENABLED")
     address := os.Getenv("VAULT_ADDR")
     refreshFlag := os.Getenv("VAULT_REFRESH_INTERVAL")
-    token := getToken()
+    token, err := getToken()
 
-    if token == "" {
+    if err == nil {
+        enabledFlag = "true"
+    } else {
         enabledFlag = "false"
     }
 

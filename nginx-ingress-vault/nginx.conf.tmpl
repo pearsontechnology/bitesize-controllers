@@ -92,10 +92,10 @@ http {
   server {
     # BITE-1446 NGINX security improvements - Remove NGINX version number
     server_tokens off;
+    listen 443 ssl;
     server_name {{$i.Host}};
     resolver {{$i.GetResolver}}:{{$i.GetResolverPort}};
     {{if $i.Ssl}}
-    listen 443 ssl;
     ssl_certificate   /etc/nginx/certs/{{$i.Host}}.crt;
     ssl_certificate_key /etc/nginx/certs/{{$i.Host}}.key;
     {{end}}{{/* if $i.Ssl */}}
