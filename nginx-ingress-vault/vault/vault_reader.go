@@ -72,25 +72,24 @@ func getToken() (token string, err error) {
 }
 
 func NewVaultReader() (*VaultReader, error) {
-    enabledFlag := os.Getenv("VAULT_ENABLED")
     address := os.Getenv("VAULT_ADDR")
     refreshFlag := os.Getenv("VAULT_REFRESH_INTERVAL")
+    enabled, err := strconv.ParseBool(os.Getenv("VAULT_ENABLED"))
+    if err != nil {
+        enabled = true
+    }
+
     token, err := getToken()
 
     if err == nil {
-        enabledFlag = "true"
+        enabled = true
     } else {
-        enabledFlag = "false"
+        enabled = false
     }
 
     refreshInterval, err := strconv.Atoi(refreshFlag)
     if err != nil {
         refreshInterval = 10
-    }
-
-    enabled, err := strconv.ParseBool(enabledFlag)
-    if err != nil {
-        enabled = true
     }
 
     if address == "" || token == "" {
