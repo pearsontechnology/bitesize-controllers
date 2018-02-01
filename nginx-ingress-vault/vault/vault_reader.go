@@ -25,16 +25,16 @@ type Cert struct {
     Secret string
 }
 
-func getToken()(token string) {
+func getToken() (token string, err error) {
 
     token = os.Getenv("VAULT_TOKEN")
     secretKey := os.Getenv("VAULT_TOKEN_SECRET")
     if token == "" {
         if secretKey == "" {
-            return token
+            return token, nil
         }
     } else {
-        return token
+        return token, nil
     }
 
     namespace := os.Getenv("POD_NAMESPACE")
@@ -54,7 +54,7 @@ func getToken()(token string) {
 
     if err != nil {
         log.Errorf("Error retrieving secrets: %v", err)
-        return ""
+        return "", nil
     }
 
     for name, data := range secrets.Data {
@@ -68,27 +68,28 @@ func getToken()(token string) {
     if err != nil {
         log.Errorf("Error parsing VAULT_TOKEN_SECRET: %v", token)
     }
-    return token
+    return token, err
 }
 
 func NewVaultReader() (*VaultReader, error) {
-    enabledFlag := os.Getenv("VAULT_ENABLED")
     address := os.Getenv("VAULT_ADDR")
     refreshFlag := os.Getenv("VAULT_REFRESH_INTERVAL")
-    token := getToken()
+    enabled, err := strconv.ParseBool(os.Getenv("VAULT_ENABLED"))
+    if err != nil {
+        enabled = true
+    }
 
-    if token == "" {
-        enabledFlag = "false"
+    token, err := getToken()
+
+    if err == nil {
+        enabled = true
+    } else {
+        enabled = false
     }
 
     refreshInterval, err := strconv.Atoi(refreshFlag)
     if err != nil {
         refreshInterval = 10
-    }
-
-    enabled, err := strconv.ParseBool(enabledFlag)
-    if err != nil {
-        enabled = true
     }
 
     if address == "" || token == "" {
