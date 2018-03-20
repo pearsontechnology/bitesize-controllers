@@ -3,6 +3,7 @@ package main
 import (
     "os"
     "net"
+    "time"
     "strings"
     log "github.com/Sirupsen/logrus"
     vault "github.com/pearsontechnology/bitesize-controllers/vault-controller/vault"
@@ -89,7 +90,7 @@ func main() {
     v := os.Getenv("RELOAD_FREQUENCY")
     reloadFrequency, err := time.ParseDuration(v)
     if err != nil || v  == "" {
-        reloadFrequency, _ = defaultReloadFrequency
+        reloadFrequency, _ = time.ParseDuration(defaultReloadFrequency)
     }
 
     // Controller loop
