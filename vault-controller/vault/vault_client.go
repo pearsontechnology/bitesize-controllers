@@ -1,6 +1,8 @@
 package vault
 
 import (
+    "strings"
+    "errors"
     vault "github.com/hashicorp/vault/api"
     log "github.com/Sirupsen/logrus"
 )
@@ -49,6 +51,25 @@ func (c *VaultClient) SealStatus() (sealState bool, err error) {
     }
 }
 
+func (c *VaultClient) Unseal(unsealKeys string) (sealState bool, err error) {
+
+    for _, key := range strings.Split(unsealKeys, ",") {
+        log.Debugf("Unseal key: %v", key)
+        //TODO handle unseal
+        resp, err := c.Client.Sys().Unseal(key)
+        if err != nil || resp == nil {
+            log.Errorf("Error Unsealing: %v", err)
+        }
+        if resp.Sealed == false {
+            log.Infof("Instance unselae")
+            return true, nil
+        } else {
+            log.Infof("Instance seal progress: %v", resp.Progress)
+        }
+    }
+    err = errors.New("Insufficient unseal keys! Instance sealed.")
+    return false, err
+}
 // Ready returns true if vault is unsealed
 func (c *VaultClient) LeaderStatus() (leaderState bool, err error) {
 

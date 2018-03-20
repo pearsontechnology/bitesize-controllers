@@ -34,12 +34,6 @@ func main() {
 
 	log.Infof("Starting vault controller version: %s", version)
 
-    serviceDomain := os.Getenv("SERVICE_DOMAIN")
-    if serviceDomain == "" {
-        serviceDomain = "svc.cluster.local"
-    }
-    log.Debugf("serviceDomain: %v", serviceDomain)
-
     vaultLabel := os.Getenv("VAULT_LABEL")
     if vaultLabel == "" {
         vaultLabel = defaultVaultLabel
@@ -75,17 +69,6 @@ func main() {
         onKubernetes = false
     }
     log.Debugf("onKubernetes: %v", onKubernetes)
-
-    vaultAddress := os.Getenv("VAULT_ADDR")
-    if vaultAddress == "" && onKubernetes == true {
-        vaultAddress = "https://vault." + vaultNamespace + "." + serviceDomain + ":" + vaultPort
-    }
-
-    // worst-case scenario
-    if vaultAddress == "" {
-        vaultAddress = defaultVaultAddr
-    }
-    log.Debugf("vaultAddress: %v", vaultAddress)
 
     v := os.Getenv("RELOAD_FREQUENCY")
     reloadFrequency, err := time.ParseDuration(v)
@@ -128,8 +111,8 @@ func main() {
         // Get Status for each instance
         for _, instanceIp := range instanceIps {
             log.Debugf("Pod IP: %v", instanceIp)
-            log.Debugf("Connecting to vault at: %v", vaultAddress)
                 instanceAddress := vaultScheme + "://" + instanceIp + ":" + vaultPort
+                log.Debugf("Connecting to vault at: %v", instanceAddress)
                 vaultClient, err := vault.NewVaultClient(instanceAddress, vaultToken)
                 initState, err := vaultClient.InitStatus()
                 if err != nil {
@@ -150,12 +133,13 @@ func main() {
                 if sealState == true {
                     log.Infof("Instance Sealed:", instanceAddress)
                     if unsealKeys != "" {
-                        for _, key := range strings.Split(unsealKeys, ",") {
-                            log.Debugf("Unseal key: %v", key)
-                            //TODO handle unseal
-                        }
+                        sealState, err = vaultClient.Unseal(unsealKeys)
+                    }
+                    if err != nil {
+                        log.Errorf("Error unsealing: %v",  err)
                     }
                 }
+
                 leaderState, err := vaultClient.LeaderStatus()
                 if err != nil {
                     log.Errorf("ERROR: Instance state unknown: %v: %v", instanceAddress, err)

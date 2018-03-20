@@ -7,7 +7,20 @@ set -m
 #
 ####################################################################################################
 
-echo "Vault ready"
+# VAULT_TOKEN overrides VAULT_TOKEN_FILE
+if [[ ! ${VAULT_TOKEN} =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0-9a-f]{12}\}?$ ]] && [[ ! -z ${VAULT_TOKEN_FILE} ]]; then
+  echo "Using VAULT_TOKEN_FILE: ${VAULT_TOKEN_FILE}..."
+  [ -f ${VAULT_TOKEN_FILE} ] && export VAULT_TOKEN=`cat ${VAULT_TOKEN_FILE}`
+fi
+
+# VAULT_UNSEAL_KEYS overrides VAULT_UNSEAL_KEYS_FILES
+if [[ ! -z ${VAULT_UNSEAL_KEYS_FILES} && "x${VAULT_UNSEAL_KEYS}x" == "xx" ]]; then
+    for f in ${VAULT_UNSEAL_KEYS_FILES}; do
+        export VAULT_UNSEAL_KEYS="$VAULT_UNSEAL_KEYS,`cat $f`"
+    done
+fi
+
+echo "Vault Controller starting..."
 exec /controller &
 pid=$!
 trap 'kill -SIGTERM $pid' EXIT
