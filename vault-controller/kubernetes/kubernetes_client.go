@@ -50,15 +50,16 @@ func GetPods(label string, namespace string) (pods *corev1.PodList, err error) {
 
 func GetPodIps(label string, namespace string) (instanceList map[string]string, err error) {
 
+    var m = make(map[string]string)
     pods := &corev1.PodList{}
 
     pods, err = GetPods(label, namespace)
     for _, pod := range pods.Items {
         log.Debugf("Pod found: %v", pod.ObjectMeta.Name)
-        instanceList[pod.ObjectMeta.Name] = pod.Status.PodIP
+        m[pod.ObjectMeta.Name] = pod.Status.PodIP
     }
     log.Debugf("GetPodIps found: %v", len(instanceList))
-    return instanceList, err
+    return m, err
 }
 
 func DeletePod(podName string, namespace string) (err error) {
