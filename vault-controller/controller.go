@@ -15,7 +15,7 @@ const defaultVaultLabel = "vault"
 const defaultVaultPort = "8243"
 const defaultVaultScheme = "https"
 const defaultVaultAddr = "http://localhost:8200"
-const defaultReloadFrequency = "5s"
+const defaultReloadFrequency = "30s"
 
 func init() {
 
@@ -23,7 +23,7 @@ func init() {
 
 func main() {
     var err error
-    var instanceIps, hostIp []string
+    var instanceList map[string]string
     var host string
 
     // init stuff
@@ -56,7 +56,7 @@ func main() {
     if vaultScheme == "" {
         vaultScheme = defaultVaultScheme
     }
-    log.Debugf("vaultPort: %v", vaultPort)
+    log.Debugf("vaultScheme: %v", vaultScheme)
 
     // don't default token
     vaultToken := os.Getenv("VAULT_TOKEN")
@@ -81,16 +81,16 @@ func main() {
 
         vaultInstances := os.Getenv("VAULT_INSTANCES")
 
-        unsealKeys := os.Getenv("UNSEAL_KEYS")
+        unsealKeys := os.Getenv("VAULT_UNSEAL_KEYS")
         if unsealKeys == "" {
-            log.Errorf("Invalid value for env var UNSEAL_KEYS: %v", unsealKeys)
+            log.Errorf("Invalid value for env var VAULT_UNSEAL_KEYS: %v", unsealKeys)
         }
 
         if vaultInstances == "" && onKubernetes == false {
             log.Errorf("Invalid value for env var VAULT_INSTANCES: %v", vaultInstances)
         } else if vaultInstances == "" && onKubernetes == true {
-            log.Info("Proceeding with pod discovery on %v", vaultLabel)
-            instanceIps, err = k8s.GetPodIps(vaultLabel, vaultNamespace)
+            log.Infof("Proceeding with pod discovery on %v", vaultLabel)
+            instanceList, err = k8s.GetPodIps(vaultLabel, vaultNamespace)
             if err != nil {
                 log.Infof("Error retrieving Pod IPs: %v", err )
             }
@@ -98,40 +98,42 @@ func main() {
             log.Info("Proceeding with pod discovery on VAULT_INSTANCES: %v", vaultInstances)
 
             for _, host = range strings.Split(vaultInstances, ",") {
-                hostIp, err = net.LookupHost(host)
+                hostIp, err := net.LookupHost(host)
                 if err != nil {
                     log.Infof("Host lookup error for %v: %v", host, err )
                     continue
                 }
                 log.Debugf("Vault instance: %v IP: %v", host,hostIp[0])
-                instanceIps = append(instanceIps, hostIp[0])
+                instanceList[host] = hostIp[0]
             }
         }
 
+        log.Debugf("instanceList: %v", instanceList)
+
         // Get Status for each instance
-        for _, instanceIp := range instanceIps {
-            log.Debugf("Pod IP: %v", instanceIp)
-                instanceAddress := vaultScheme + "://" + instanceIp + ":" + vaultPort
+        for name, ip := range instanceList {
+            log.Debugf("Pod %v IP: %v", name, ip)
+                instanceAddress := vaultScheme + "://" + ip + ":" + vaultPort
                 log.Debugf("Connecting to vault at: %v", instanceAddress)
                 vaultClient, err := vault.NewVaultClient(instanceAddress, vaultToken)
                 initState, err := vaultClient.InitStatus()
                 if err != nil {
-                    log.Errorf("ERROR: Init state unknown: %v: %v", instanceAddress, err)
+                    log.Errorf("ERROR: Init state unknown: %v: %v", name, err)
                     //TODO handle errors
                 }
                 if initState != true {
-                    log.Infof("Instance NOT initialised: %v", instanceAddress)
+                    log.Infof("Instance NOT initialised: %v", name)
                     // TODO Do Init
                 } else {
-                    log.Debugf("Instance initialised: %v", instanceAddress)
+                    log.Debugf("Instance initialised: %v", name)
                 }
                 sealState, err := vaultClient.SealStatus()
                 if err != nil {
-                    log.Errorf("ERROR: Seal state unknown: %v: %v", instanceAddress, err)
+                    log.Errorf("ERROR: Seal state unknown: %v: %v", name, err)
                     //TODO handle errors
                 }
                 if sealState == true {
-                    log.Infof("Instance Sealed:", instanceAddress)
+                    log.Infof("Instance Sealed:", name)
                     if unsealKeys != "" {
                         sealState, err = vaultClient.Unseal(unsealKeys)
                     }
@@ -142,18 +144,24 @@ func main() {
 
                 leaderState, err := vaultClient.LeaderStatus()
                 if err != nil {
-                    log.Errorf("ERROR: Instance state unknown: %v: %v", instanceAddress, err)
+                    log.Errorf("ERROR: Instance state unknown: %v: %v", name, err)
                     //TODO handle errors
                 }
                 switch leaderState {
                 case true:
-                    log.Infof("Instance is leader: %v", instanceAddress)
+                    log.Infof("Instance is leader: %v", name)
                     // TODO Do we care ?
                 case false:
-                    log.Infof("Instance is standby: %v", instanceAddress)
+                    log.Infof("Instance is standby: %v", name)
                 default:
-                    log.Errorf("ERROR: Instance state unknown: %v", instanceAddress)
-                    // TODO is this where we kill it?
+                    log.Errorf("ERROR: Instance state unknown: %v", name)
+                    if onKubernetes == true {
+                        log.Infof("Killing instance: %v", name)
+                        k8s.DeletePod(name, vaultNamespace)
+                        if err != nil {
+                            log.Errorf("Error deleting %v: %v", name, err)
+                        }
+                    }
                 }
         }
 

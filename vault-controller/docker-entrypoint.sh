@@ -18,10 +18,14 @@ if [[ ! -z ${VAULT_UNSEAL_KEYS_FILES} && "x${VAULT_UNSEAL_KEYS}x" == "xx" ]]; th
     for f in ${VAULT_UNSEAL_KEYS_FILES}; do
         export VAULT_UNSEAL_KEYS="$VAULT_UNSEAL_KEYS,`cat $f`"
     done
+    unset f
 fi
 
 echo "Vault Controller starting..."
-exec /controller &
+exec /controller "$@" &
+if [ ${DEBUG} == "true" ]; then
+    set
+fi
 pid=$!
 trap 'kill -SIGTERM $pid' EXIT
 fg %1

@@ -10,6 +10,12 @@ import (
     "k8s.io/client-go/rest"
 )
 
+func listOptions(value string) metav1.ListOptions {
+	return metav1.ListOptions{
+		LabelSelector: "name=" + value,
+	}
+}
+
 func getClient()(*kubernetes.Clientset, error) {
     var err error
 
@@ -28,29 +34,45 @@ func getClient()(*kubernetes.Clientset, error) {
 
 func GetPods(label string, namespace string) (pods *corev1.PodList, err error) {
 
-    pods = &corev1.PodList{}
-
     clientset, err := getClient()
-    if err != nil {
-        pods, _ := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
-
-        for _, pod := range pods.Items {
-            log.Debugf(pod.Name, pod.Status.PodIP)
+    if err == nil {
+        pods, err := clientset.CoreV1().Pods(namespace).List(listOptions(label))
+        log.Debugf("GetPods found: %v pods in %v with label %v", len(pods.Items), namespace, label)
+        if err != nil {
+            log.Infof("Error GetPods: %v", err)
         }
+        return pods, err
+    } else {
+        log.Infof("Error GetPods.getClient: %v", err)
+        return nil, err
     }
-
-    return pods, err
 }
 
-func GetPodIps(label string, namespace string) (podIps []string, err error) {
+func GetPodIps(label string, namespace string) (instanceList map[string]string, err error) {
 
-    pods, err := GetPods(label, namespace)
+    pods := &corev1.PodList{}
 
+    pods, err = GetPods(label, namespace)
     for _, pod := range pods.Items {
-        podIps = append(podIps, pod.Status.PodIP)
+        log.Debugf("Pod found: %v", pod.ObjectMeta.Name)
+        instanceList[pod.ObjectMeta.Name] = pod.Status.PodIP
     }
+    log.Debugf("GetPodIps found: %v", len(instanceList))
+    return instanceList, err
+}
 
-    return podIps, err
+func DeletePod(podName string, namespace string) (err error) {
+
+    clientset, err := getClient()
+    log.Debugf("Deleting pod: %v", podName)
+    //options := metav1.DeleteOptions{}
+    err = clientset.CoreV1().Pods(namespace).Delete(podName, nil)
+    if err != nil {
+        log.Errorf("Error deleting pod %v: %v", podName, err)
+        return err
+    } else {
+        return err
+    }
 }
 
 func GetSecret(secretName, string, secretKey string, namespace string)(secretValue string) {
@@ -71,6 +93,10 @@ func GetSecret(secretName, string, secretKey string, namespace string)(secretVal
             secretValue = ""
         }
     }
-
+    if len(secretValue) > 0 {
+        log.Debugf("GetSecret found for %v", secretName)
+    } else {
+        log.Debugf("GetSecret not found for %v", secretName)
+    }
     return secretValue
 }

@@ -13,16 +13,19 @@ type VaultClient struct {
 
 func NewVaultClient(address string, token string) (*VaultClient, error) {
 
+    config := vault.DefaultConfig()
+    config.Address = address
     if address == "" || token == "" {
         log.Errorf("Vault not configured")
         return nil, nil
     }
 
-    client, err := vault.NewClient(nil)
+    client, err := vault.NewClient(config)
     if err != nil {
         log.Errorf("Vault config failed.")
         return &VaultClient{nil}, err
     }
+    client.SetToken(token)
     return &VaultClient{ Client: client }, err
 }
 
@@ -34,7 +37,7 @@ func (c *VaultClient) InitStatus() (initState bool, err error) {
         log.Errorf("Error retrieving vault init status")
         return false, err
     } else {
-        log.Debug("InitStatus: %v", status)
+        log.Debugf("InitStatus: %v", status)
         return status, err
     }
 }
@@ -46,7 +49,7 @@ func (c *VaultClient) SealStatus() (sealState bool, err error) {
         log.Errorf("Error retrieving vault seal status")
         return true, err
     } else {
-        log.Debug("SealStatus: %v", status)
+        log.Debugf("SealStatus: %v", status)
         return status.Sealed, err
     }
 }
@@ -78,7 +81,7 @@ func (c *VaultClient) LeaderStatus() (leaderState bool, err error) {
         log.Errorf("Error retrieving vault leader status")
         return false, err
     } else {
-        log.Debug("LeaderStatus: %v", status)
+        log.Debugf("LeaderStatus: %v", status)
         return status.IsSelf, err
     }
 
