@@ -16,7 +16,7 @@ fi
 # VAULT_UNSEAL_KEYS overrides VAULT_UNSEAL_KEYS_FILES
 if [[ ! -z ${VAULT_UNSEAL_KEYS_FILES} && "x${VAULT_UNSEAL_KEYS}x" == "xx" ]]; then
     for f in ${VAULT_UNSEAL_KEYS_FILES}; do
-        export VAULT_UNSEAL_KEYS="$VAULT_UNSEAL_KEYS,`cat $f`"
+        export VAULT_UNSEAL_KEYS="`cat $f`,$VAULT_UNSEAL_KEYS"
     done
     unset f
 fi

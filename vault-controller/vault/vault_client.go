@@ -58,7 +58,9 @@ func (c *VaultClient) Unseal(unsealKeys string) (sealState bool, err error) {
 
     for _, key := range strings.Split(unsealKeys, ",") {
         log.Debugf("Unseal key: %v", key)
-        //TODO handle unseal
+        if len(key) <= 0 {
+            continue
+        }
         resp, err := c.Client.Sys().Unseal(key)
         if err != nil || resp == nil {
             log.Errorf("Error Unsealing: %v", err)

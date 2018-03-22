@@ -21,6 +21,15 @@ func init() {
 
 }
 
+func deletePod(name string, namespace string) {
+    var err error
+    log.Infof("Killing instance: %v", name)
+    k8s.DeletePod(name, namespace)
+    if err != nil {
+        log.Errorf("Error deleting %v: %v", name, err)
+    }
+}
+
 func main() {
     var err error
     var instanceList map[string]string
@@ -120,6 +129,10 @@ func main() {
                 if err != nil {
                     log.Errorf("ERROR: Init state unknown: %v: %v", name, err)
                     //TODO handle errors
+                    if onKubernetes == true {
+                        deletePod(name, vaultNamespace)
+                        continue
+                    }
                 }
                 if initState != true {
                     log.Infof("Instance NOT initialised: %v", name)
@@ -156,11 +169,8 @@ func main() {
                 default:
                     log.Errorf("ERROR: Instance state unknown: %v", name)
                     if onKubernetes == true {
-                        log.Infof("Killing instance: %v", name)
-                        k8s.DeletePod(name, vaultNamespace)
-                        if err != nil {
-                            log.Errorf("Error deleting %v: %v", name, err)
-                        }
+                        deletePod(name, vaultNamespace)
+                        continue
                     }
                 }
         }
