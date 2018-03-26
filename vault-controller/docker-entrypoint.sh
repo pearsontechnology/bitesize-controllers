@@ -25,7 +25,6 @@ echo "Vault Controller starting..."
 exec /controller "$@" &
 if [ ${DEBUG} == "true" ]; then
     set
-    ls -l /
 fi
 pid=$!
 trap 'kill -SIGTERM $pid' EXIT
