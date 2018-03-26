@@ -122,9 +122,23 @@ func main() {
         // Get Status for each instance
         for name, ip := range instanceList {
             log.Debugf("Pod %v IP: %v", name, ip)
+                if ip == "error" {
+                    if onKubernetes == true {
+                        deletePod(name, vaultNamespace)
+                        continue
+                    }
+                }
+                if len(ip) <= 0 {
+                    log.Debugf("Skipping pod: %v", name)
+                    continue
+                }
                 instanceAddress := vaultScheme + "://" + ip + ":" + vaultPort
                 log.Debugf("Connecting to vault at: %v", instanceAddress)
                 vaultClient, err := vault.NewVaultClient(instanceAddress, vaultToken)
+                if err != nil {
+                    log.Debugf("Vault client failed for: %v, %v", name, err)
+                    continue
+                }
                 initState, err := vaultClient.InitStatus()
                 if err != nil {
                     log.Errorf("ERROR: Init state unknown: %v: %v", name, err)
@@ -140,6 +154,7 @@ func main() {
                 } else {
                     log.Debugf("Instance initialised: %v", name)
                 }
+
                 sealState, err := vaultClient.SealStatus()
                 if err != nil {
                     log.Errorf("ERROR: Seal state unknown: %v: %v", name, err)

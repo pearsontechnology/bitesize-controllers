@@ -16,7 +16,7 @@ fi
 # VAULT_UNSEAL_KEYS overrides VAULT_UNSEAL_KEYS_FILES
 if [[ ! -z ${VAULT_UNSEAL_KEYS_FILES} && "x${VAULT_UNSEAL_KEYS}x" == "xx" ]]; then
     for f in ${VAULT_UNSEAL_KEYS_FILES}; do
-        export VAULT_UNSEAL_KEYS="`cat $f`,$VAULT_UNSEAL_KEYS"
+        [ -f $f ] && export VAULT_UNSEAL_KEYS="`cat $f`,$VAULT_UNSEAL_KEYS"
     done
     unset f
 fi
@@ -25,6 +25,7 @@ echo "Vault Controller starting..."
 exec /controller "$@" &
 if [ ${DEBUG} == "true" ]; then
     set
+    ls -l /
 fi
 pid=$!
 trap 'kill -SIGTERM $pid' EXIT

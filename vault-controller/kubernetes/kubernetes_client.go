@@ -57,7 +57,15 @@ func GetPodIps(label string, namespace string) (instanceList map[string]string, 
     pods, err = GetPods(label, namespace)
     for _, pod := range pods.Items {
         log.Debugf("Pod found: %v", pod.ObjectMeta.Name)
-        m[pod.ObjectMeta.Name] = pod.Status.PodIP
+        switch pod.Status.Phase {
+        case "Pending":
+            m[pod.ObjectMeta.Name] = ""
+        case "Running":
+            m[pod.ObjectMeta.Name] = pod.Status.PodIP
+        case "Failed","Unknown":
+            m[pod.ObjectMeta.Name] = "error"
+        }
+
     }
     log.Debugf("GetPodIps found: %v", len(instanceList))
     return m, err

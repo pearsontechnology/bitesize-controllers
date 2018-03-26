@@ -66,7 +66,7 @@ func (c *VaultClient) Unseal(unsealKeys string) (sealState bool, err error) {
             log.Errorf("Error Unsealing: %v", err)
         }
         if resp.Sealed == false {
-            log.Infof("Instance unselae")
+            log.Infof("Instance unsealed")
             return true, nil
         } else {
             log.Infof("Instance seal progress: %v", resp.Progress)
