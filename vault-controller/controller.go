@@ -132,15 +132,15 @@ func main() {
         reloadFrequency, _ = time.ParseDuration(defaultReloadFrequency)
     }
 
+    unsealKeys := os.Getenv("VAULT_UNSEAL_KEYS")
+    if unsealKeys == "" {
+        log.Errorf("Invalid value for env var VAULT_UNSEAL_KEYS: %v", unsealKeys)
+    }
+
     // Controller loop
     for {
 
         vaultInstances := os.Getenv("VAULT_INSTANCES")
-
-        unsealKeys := os.Getenv("VAULT_UNSEAL_KEYS")
-        if unsealKeys == "" {
-            log.Errorf("Invalid value for env var VAULT_UNSEAL_KEYS: %v", unsealKeys)
-        }
 
         if vaultInstances == "" && onKubernetes == false {
             log.Errorf("Invalid value for env var VAULT_INSTANCES: %v", vaultInstances)
@@ -212,7 +212,7 @@ func main() {
                     //TODO handle errors
                 }
                 if sealState == true {
-                    log.Infof("Instance Sealed:", name)
+                    log.Infof("Instance Sealed: %v", name)
                     if unsealKeys != "" {
                         sealState, err = vaultClient.Unseal(unsealKeys)
                     }
