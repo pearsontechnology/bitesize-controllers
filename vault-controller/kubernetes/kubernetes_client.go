@@ -49,11 +49,11 @@ func GetPods(label string, namespace string) (pods *corev1.PodList, err error) {
         pods, err := clientset.CoreV1().Pods(namespace).List(listOptions(label))
         log.Debugf("GetPods found: %v pods in %v with label %v", len(pods.Items), namespace, label)
         if err != nil {
-            log.Infof("Error GetPods: %v", err)
+            log.Infof("Error GetPods: %v", err.Error())
         }
         return pods, err
     } else {
-        log.Infof("Error GetPods.getClient: %v", err)
+        log.Infof("Error GetPods.getClient: %v", err.Error())
         return nil, err
     }
 }
@@ -88,7 +88,7 @@ func DeletePod(podName string, namespace string) (err error) {
     err = clientset.CoreV1().Pods(namespace).Delete(podName, nil)
     time.Sleep(60 * time.Second)
     if err != nil {
-        log.Errorf("Error deleting pod %v: %v", podName, err)
+        log.Errorf("Error deleting pod %v: %v", podName, err.Error())
         return err
     } else {
         return err
@@ -100,7 +100,7 @@ func GetSecret(secretName, string, secretKey string, namespace string)(secretVal
     clientset, err := getClient()
     secret, err := clientset.CoreV1().Secrets(namespace).Get(secretName, metav1.GetOptions{})
     if err != nil {
-        log.Errorf("Error retrieving secret %v: %v", secretName, err)
+        log.Errorf("Error retrieving secret %v: %v", secretName, err.Error())
         return ""
     }
 
@@ -140,7 +140,7 @@ func PutSecret(secretName string, secretKey string, secretValue string, namespac
 
     secrets, err := clientset.CoreV1().Secrets(namespace).List(metav1.ListOptions{})
 	if err != nil {
-		log.Errorf("Error retrieving secrets %v:", err)
+		log.Errorf("Error retrieving secrets %v:", err.Error())
 	}
 	found := false
 	for _, sec := range secrets.Items {

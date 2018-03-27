@@ -18,6 +18,8 @@ const defaultVaultAddr = "http://localhost:8200"
 const defaultReloadFrequency = "30s"
 const defaultUnsealSecretName = "vault-unseal-keys"
 const defaultUnsealSecretKey = "unseal-key"
+const defaultTokenSecretName = "vault-tokens"
+const defaultTokenlSecretKey = "root-token"
 
 func init() {
 
@@ -28,7 +30,7 @@ func deletePod(name string, namespace string) {
     log.Infof("Killing instance: %v", name)
     k8s.DeletePod(name, namespace)
     if err != nil {
-        log.Errorf("Error deleting %v: %v", name, err)
+        log.Errorf("Error deleting %v: %v", name, err.Error())
     }
 }
 
@@ -36,7 +38,7 @@ func initInstance(c *vault.VaultClient, onKubernetes bool) (r *vault.VaultClient
     instanceAddress := c.Client.Address()
     token, keys, err := c.Init()
     if err != nil {
-        log.Errorf("Error Initialise failed: %v", err)
+        log.Errorf("Error Initialise failed: %v", err.Error())
         return c, "", err
     } else {
         if onKubernetes == true {
@@ -47,6 +49,14 @@ func initInstance(c *vault.VaultClient, onKubernetes bool) (r *vault.VaultClient
             unsealSecretKey := os.Getenv("VAULT_UNSEAL_SECRET_KEY")
             if unsealSecretKey == "" {
                 unsealSecretKey = defaultUnsealSecretKey
+            }
+            tokenSecretName := os.Getenv("VAULT_TOKEN_SECRET_NAME")
+            if tokenSecretName == "" {
+                tokenSecretName = defaultTokenSecretName
+            }
+            tokenSecretKey := os.Getenv("VAULT_TOKEN_SECRET_KEY")
+            if tokenSecretKey == "" {
+                tokenSecretKey = defaultTokenlSecretKey
             }
             vaultNamespace := os.Getenv("VAULT_NAMESPACE")
             if vaultNamespace == "" {
@@ -59,6 +69,8 @@ func initInstance(c *vault.VaultClient, onKubernetes bool) (r *vault.VaultClient
             unsealKeys = strings.Trim(k, ",")
             log.Debugf("Stashing %v Unseal keys in: %v/%v", len(strings.Split(unsealKeys, ",")), vaultNamespace, unsealSecretName)
             k8s.PutSecret(unsealSecretName, unsealSecretKey, unsealKeys, vaultNamespace)
+            log.Debugf("Stashing Root Token in: %v/%v", vaultNamespace, unsealSecretName)
+            k8s.PutSecret(tokenSecretName, tokenSecretKey, token, vaultNamespace)
         }
          r, err := vault.NewVaultClient(instanceAddress, token)
          return r, unsealKeys, err
@@ -171,12 +183,12 @@ func main() {
                 log.Debugf("Connecting to vault at: %v", instanceAddress)
                 vaultClient, err := vault.NewVaultClient(instanceAddress, vaultToken)
                 if err != nil {
-                    log.Debugf("Vault client failed for: %v, %v", name, err)
+                    log.Debugf("Vault client failed for: %v, %v", name, err.Error())
                     continue
                 }
                 initState, err := vaultClient.InitStatus()
                 if err != nil {
-                    log.Errorf("ERROR: Init state unknown: %v: %v", name, err)
+                    log.Errorf("ERROR: Init state unknown: %v: %v", name, err.Error())
                     //TODO handle errors
                     if onKubernetes == true {
                         deletePod(name, vaultNamespace)
@@ -196,7 +208,7 @@ func main() {
 
                 sealState, err := vaultClient.SealStatus()
                 if err != nil {
-                    log.Errorf("ERROR: Seal state unknown: %v: %v", name, err)
+                    log.Errorf("ERROR: Seal state unknown: %v: %v", name, err.Error())
                     //TODO handle errors
                 }
                 if sealState == true {
@@ -205,13 +217,13 @@ func main() {
                         sealState, err = vaultClient.Unseal(unsealKeys)
                     }
                     if err != nil {
-                        log.Errorf("Error unsealing: %v",  err)
+                        log.Errorf("Error unsealing: %v",  err.Error())
                     }
                 }
 
                 leaderState, err := vaultClient.LeaderStatus()
                 if err != nil {
-                    log.Errorf("ERROR: Instance state unknown: %v: %v", name, err)
+                    log.Errorf("ERROR: Instance state unknown: %v: %v", name, err.Error())
                     //TODO handle errors
                 }
                 switch leaderState {
