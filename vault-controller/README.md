@@ -17,8 +17,8 @@ VAULT_NAMESPACE namespace for target pods. Default = "kube-system"
 VAULT_PORT vault service port. Default = "8243"
 VAULT_SCHEME vault transport scheme. Default = "https"
 RELOAD_FREQUENCY how often to run controller loop. Default = "5s"
-
+VAULT_UNSEAL_SECRET_NAME k8s secret name to stash unseal keys in. Default = vault-unseal-keys
+VAULT_UNSEAL_SECRET_KEY k8s secret key for unseal keys. Default = unseal-key-[1..n]
 Note:
 Building on ubuntu:
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build controller.go 
-
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build controller.go

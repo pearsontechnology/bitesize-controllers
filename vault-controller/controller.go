@@ -16,6 +16,8 @@ const defaultVaultPort = "8243"
 const defaultVaultScheme = "https"
 const defaultVaultAddr = "http://localhost:8200"
 const defaultReloadFrequency = "30s"
+const defaultUnsealSecretName = "vault-unseal-keys"
+const defaultUnsealSecretKey = "unseal-key"
 
 func init() {
 
@@ -27,6 +29,39 @@ func deletePod(name string, namespace string) {
     k8s.DeletePod(name, namespace)
     if err != nil {
         log.Errorf("Error deleting %v: %v", name, err)
+    }
+}
+
+func initInstance(c *vault.VaultClient, onKubernetes bool) (r *vault.VaultClient, unsealKeys string, err error) {
+    instanceAddress := c.Client.Address()
+    token, keys, err := c.Init()
+    if err != nil {
+        log.Errorf("Error Initialise failed: %v", err)
+        return c, "", err
+    } else {
+        if onKubernetes == true {
+            unsealSecretName := os.Getenv("VAULT_UNSEAL_SECRET_NAME")
+            if unsealSecretName == "" {
+                unsealSecretName = defaultUnsealSecretName
+            }
+            unsealSecretKey := os.Getenv("VAULT_UNSEAL_SECRET_KEY")
+            if unsealSecretKey == "" {
+                unsealSecretKey = defaultUnsealSecretKey
+            }
+            vaultNamespace := os.Getenv("VAULT_NAMESPACE")
+            if vaultNamespace == "" {
+                vaultNamespace = defaultNameSpace
+            }
+            var k string
+            for _, v := range keys {
+                k = k + string(v) + ","
+            }
+            unsealKeys = strings.Trim(k, ",")
+            log.Debugf("Stashing %v Unseal keys in: %v/%v", len(strings.Split(unsealKeys, ",")), vaultNamespace, unsealSecretName)
+            k8s.PutSecret(unsealSecretName, unsealSecretKey, unsealKeys, vaultNamespace)
+        }
+         r, err := vault.NewVaultClient(instanceAddress, token)
+         return r, unsealKeys, err
     }
 }
 
@@ -152,10 +187,10 @@ func main() {
                     log.Debugf("Instance initialised: %v", name)
                 } else {
                     log.Infof("Instance NOT initialised: %v", name)
-                    resp, err := vaultClient.Init()
+                    vaultClient, unsealKeys, err = initInstance(vaultClient, onKubernetes)
                     if err != nil {
-                        log.Errorf("Error Initialise failed: %v", err)
-                        continue
+                        log.Errorf("ERROR: init resturned error: %v", err.Error())
+                        //TODO handle errors
                     }
                 }
 

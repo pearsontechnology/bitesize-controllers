@@ -18,7 +18,7 @@ func NewVaultClient(address string, token string) (*VaultClient, error) {
 
     config := vault.DefaultConfig()
     config.Address = address
-    if address == "" || token == "" {
+    if address == "" {
         log.Errorf("Vault not configured")
         return nil, nil
     }
@@ -28,7 +28,11 @@ func NewVaultClient(address string, token string) (*VaultClient, error) {
         log.Errorf("Vault config failed.")
         return &VaultClient{nil}, err
     }
-    client.SetToken(token)
+
+    if token != "" {
+        client.SetToken(token)
+    }
+
     return &VaultClient{ Client: client }, err
 }
 
@@ -45,19 +49,24 @@ func (c *VaultClient) InitStatus() (initState bool, err error) {
 }
 
 // Init with defaults
-func (c *VaultClient) Init() (initResponse *vault.InitResponse, err error) {
+func (c *VaultClient) Init() (token string, keys []string, err error) {
+    initReq := &vault.InitRequest {
+                SecretShares: 5,
+                SecretThreshold: 3,
+            }
 
-    response, err := c.Client.Sys().Init(&vault.InitRequest{})
+    response, err := c.Client.Sys().Init(initReq)
     if err != nil {
         log.Errorf("Error initializing Vault! %v", err)
-        return response, err
     } else {
         log.Infof("Initialised instance %v", c.Client.Address())
         log.Debugf("InitStatus: %v", response)
         w, _ := time.ParseDuration(initWait)
         time.Sleep(w)
-        return response, err
     }
+    token = response.RootToken
+    keys = response.KeysB64
+    return token, keys, err
 }
 
 // SealStatus returns true if vault is unsealed
