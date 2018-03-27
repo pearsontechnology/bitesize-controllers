@@ -4,6 +4,7 @@ import (
     "strings"
     "fmt"
     "time"
+    "encoding/json"
     "encoding/base64"
     log "github.com/Sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -12,6 +13,12 @@ import (
     "k8s.io/client-go/kubernetes"
     "k8s.io/client-go/rest"
 )
+
+type PatchSpec struct {
+        Op    string `json:"op"`
+        Path  string `json:"path"`
+        Value string `json:"value"`
+}
 
 func listOptions(value string) metav1.ListOptions {
 	return metav1.ListOptions{
@@ -116,9 +123,11 @@ func GetSecret(secretName, string, secretKey string, namespace string)(secretVal
 
 func PutSecret(secretName string, secretKey string, secretValue string, namespace string) (err error) {
 
+    secretValue = base64.StdEncoding.EncodeToString([]byte(secretValue))
     s := map[string]string{
-        secretKey: base64.StdEncoding.EncodeToString([]byte(secretValue)),
+        secretKey: secretValue,
     }
+
     secretData := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
@@ -140,12 +149,22 @@ func PutSecret(secretName string, secretKey string, secretValue string, namespac
 		}
 	}
     if found == false {
+        log.Debugf("Creating secretData: %v", secretData)
         _, err := clientset.CoreV1().Secrets(namespace).Create(secretData)
         if err != nil {
-        	log.Errorf("Error Creating secret %v:", secretName, err.Error())
+        	log.Errorf("Error Creating secret %v:%v", secretName, err.Error())
         }
     } else {
-        _, err := clientset.CoreV1().Secrets(namespace).Patch(secretName, types.JSONPatchType, []byte(secretValue))
+        patchData := make([]PatchSpec, 1)
+        patchData[0].Op = "add"
+        patchData[0].Path = "/data/" + secretKey
+        patchData[0].Value = secretValue
+        patchBytes, err := json.Marshal(patchData)
+        if err != nil {
+        	log.Errorf("Error formatting patch %v:%v", patchData, err.Error())
+        }
+        log.Debugf("Patching secretData: %v, %v, %v", secretName, types.JSONPatchType, patchBytes)
+        _, err = clientset.CoreV1().Secrets(namespace).Patch(secretName, types.JSONPatchType, patchBytes)
         if err != nil {
         	log.Errorf("Error Patching secret %v: %v", secretName, err.Error())
         }
