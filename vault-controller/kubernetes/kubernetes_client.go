@@ -4,9 +4,11 @@ import (
     "strings"
     "fmt"
     "time"
+    "encoding/base64"
     log "github.com/Sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    "k8s.io/apimachinery/pkg/types"
     "k8s.io/client-go/kubernetes"
     "k8s.io/client-go/rest"
 )
@@ -110,4 +112,44 @@ func GetSecret(secretName, string, secretKey string, namespace string)(secretVal
         log.Debugf("GetSecret not found for %v", secretName)
     }
     return secretValue
+}
+
+func PutSecret(secretName string, secretKey string, secretValue string, namespace string) (err error) {
+
+    s := map[string]string{
+        secretKey: base64.StdEncoding.EncodeToString([]byte(secretValue)),
+    }
+    secretData := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: namespace,
+		},
+		StringData: s,
+	}
+
+    clientset, err := getClient()
+
+    secrets, err := clientset.CoreV1().Secrets(namespace).List(metav1.ListOptions{})
+	if err != nil {
+		log.Errorf("Error retrieving secrets %v:", err)
+	}
+	found := false
+	for _, sec := range secrets.Items {
+		if sec.ObjectMeta.Name == secretName {
+			found = true
+		}
+	}
+    if found == false {
+        _, err := clientset.CoreV1().Secrets(namespace).Create(secretData)
+        if err != nil {
+        	log.Errorf("Error Creating secret %v:", secretName, err.Error())
+        }
+    } else {
+        _, err := clientset.CoreV1().Secrets(namespace).Patch(secretName, types.JSONPatchType, []byte(secretValue))
+        if err != nil {
+        	log.Errorf("Error Patching secret %v: %v", secretName, err.Error())
+        }
+    }
+
+    return err
 }

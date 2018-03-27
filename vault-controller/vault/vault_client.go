@@ -3,6 +3,7 @@ package vault
 import (
     "strings"
     "errors"
+    "time"
     vault "github.com/hashicorp/vault/api"
     log "github.com/Sirupsen/logrus"
 )
@@ -10,6 +11,8 @@ import (
 type VaultClient struct {
     Client *vault.Client
 }
+
+const initWait = "5s"
 
 func NewVaultClient(address string, token string) (*VaultClient, error) {
 
@@ -29,7 +32,6 @@ func NewVaultClient(address string, token string) (*VaultClient, error) {
     return &VaultClient{ Client: client }, err
 }
 
-// SealStatus returns true if vault is unsealed
 func (c *VaultClient) InitStatus() (initState bool, err error) {
 
     status, err := c.Client.Sys().InitStatus()
@@ -42,6 +44,23 @@ func (c *VaultClient) InitStatus() (initState bool, err error) {
     }
 }
 
+// Init with defaults
+func (c *VaultClient) Init() (initResponse *vault.InitResponse, err error) {
+
+    response, err := c.Client.Sys().Init(&vault.InitRequest{})
+    if err != nil {
+        log.Errorf("Error initializing Vault! %v", err)
+        return response, err
+    } else {
+        log.Infof("Initialised instance %v", c.Client.Address())
+        log.Debugf("InitStatus: %v", response)
+        w, _ := time.ParseDuration(initWait)
+        time.Sleep(w)
+        return response, err
+    }
+}
+
+// SealStatus returns true if vault is unsealed
 func (c *VaultClient) SealStatus() (sealState bool, err error) {
 
     status, err := c.Client.Sys().SealStatus()

@@ -148,11 +148,15 @@ func main() {
                         continue
                     }
                 }
-                if initState != true {
-                    log.Infof("Instance NOT initialised: %v", name)
-                    // TODO Do Init
-                } else {
+                if initState == true {
                     log.Debugf("Instance initialised: %v", name)
+                } else {
+                    log.Infof("Instance NOT initialised: %v", name)
+                    resp, err := vaultClient.Init()
+                    if err != nil {
+                        log.Errorf("Error Initialise failed: %v", err)
+                        continue
+                    }
                 }
 
                 sealState, err := vaultClient.SealStatus()
