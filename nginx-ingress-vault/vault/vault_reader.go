@@ -120,13 +120,23 @@ func (r *VaultReader) Ready() bool {
         return false
     }
 
-    status, err := r.Client.Sys().SealStatus()
-    if err != nil || status == nil {
-        log.Info("Error retrieving vault status: %v, %v", status, err)
-        return false
+    attempt := 1
+    var err error
+    var status *vault.SealStatusResponse
+    for {
+        status, err = r.Client.Sys().SealStatus()
+        if err != nil || status == nil {
+            log.Infof("Error retrieving vault status: %v, %v", status, err)
+            if attempt >= 5 {
+                return false
+            }
+            time.Sleep(time.Second)
+            attempt++
+        } else {
+            return !status.Sealed
+        }
     }
 
-    return !status.Sealed
 }
 
 // RenewToken renews vault's token every TokenRefreshInterval
@@ -145,12 +155,26 @@ func (r *VaultReader) RenewToken() {
 }
 
 func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
-    var e error
+    var e, err error
 
     vaultPath := "secret/ssl/" + hostname
 
-    keySecretData, err := r.Client.Logical().Read(vaultPath)
-    if err != nil || keySecretData == nil {
+    attempt := 1
+    var keySecretData *vault.Secret
+    for {
+        keySecretData, err = r.Client.Logical().Read(vaultPath)
+        if err != nil {
+            if attempt >= 5 {
+                e = fmt.Errorf("Could not retrieve secret for %v", hostname)
+                return nil, nil, e
+            }
+            time.Sleep(time.Second)
+            attempt++
+        } else {
+            break
+        }
+    }
+    if keySecretData == nil {
         e = fmt.Errorf("No secret for %v", hostname)
         return nil, nil, e
     }
