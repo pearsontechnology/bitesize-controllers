@@ -12,6 +12,7 @@ import (
     "k8s.io/client-go/1.4/kubernetes"
     "k8s.io/client-go/1.4/rest"
     "github.com/google/uuid"
+    "github.com/avast/retry-go"
 )
 
 type VaultReader struct {
@@ -120,23 +121,24 @@ func (r *VaultReader) Ready() bool {
         return false
     }
 
-    attempt := 1
     var err error
     var status *vault.SealStatusResponse
-    for {
-        status, err = r.Client.Sys().SealStatus()
-        if err != nil || status == nil {
-            log.Infof("Error retrieving vault status: %v, %v", status, err)
-            if attempt >= 5 {
-                return false
-            }
-            time.Sleep(time.Second)
-            attempt++
-        } else {
-            return !status.Sealed
-        }
-    }
 
+    retry.Do(func() error {
+            status, err = r.Client.Sys().SealStatus()
+            return err},
+        retry.Delay(1 * time.Second),
+        retry.Attempts(5),
+        retry.OnRetry(func(n uint, err error) {
+	        log.Errorf("Error count: %v getting vault status: %d", n+1, err.Error())
+	    }),
+    )
+
+    if err != nil || status == nil {
+        log.Errorf("Error retrieving vault status: %v, %v", status, err.Error())
+        return false
+    }
+    return !status.Sealed
 }
 
 // RenewToken renews vault's token every TokenRefreshInterval
@@ -147,7 +149,7 @@ func (r *VaultReader) RenewToken() {
         tokenData, err := r.Client.Logical().Write(tokenPath, nil)
 
         if err != nil || tokenData == nil {
-            log.Errorf("Error renewing Vault token %v, %v\n", err, tokenData)
+            log.Errorf("Error renewing Vault token %v, %v", err, tokenData)
         } else {
             log.Infof("Successfully renewed Vault token.\n")
         }
@@ -159,21 +161,22 @@ func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
 
     vaultPath := "secret/ssl/" + hostname
 
-    attempt := 1
     var keySecretData *vault.Secret
-    for {
-        keySecretData, err = r.Client.Logical().Read(vaultPath)
-        if err != nil {
-            if attempt >= 5 {
-                e = fmt.Errorf("Could not retrieve secret for %v", hostname)
-                return nil, nil, e
-            }
-            time.Sleep(time.Second)
-            attempt++
-        } else {
-            break
-        }
+    retry.Do(func() error {
+            keySecretData, err = r.Client.Logical().Read(vaultPath)
+            return err},
+        retry.Delay(1 * time.Second),
+        retry.Attempts(5),
+        retry.OnRetry(func(n uint, err error) {
+	        log.Errorf("Error count: %v getting vault data: %d", n+1, err.Error())
+	    }),
+    )
+
+    if err != nil {
+        e = fmt.Errorf("Error retrieving secret for %v: %v", hostname, err.Error())
+        return nil, nil, e
     }
+
     if keySecretData == nil {
         e = fmt.Errorf("No secret for %v", hostname)
         return nil, nil, e
