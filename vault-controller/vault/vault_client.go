@@ -6,6 +6,7 @@ import (
     "time"
     vault "github.com/hashicorp/vault/api"
     log "github.com/Sirupsen/logrus"
+    "github.com/pearsontechnology/bitesize-controllers/vault-controller/crd"
 )
 
 type VaultClient struct {
@@ -103,6 +104,7 @@ func (c *VaultClient) Unseal(unsealKeys string) (sealState bool, err error) {
     err = errors.New("Insufficient unseal keys! Instance sealed.")
     return false, err
 }
+
 // Ready returns true if vault is unsealed
 func (c *VaultClient) LeaderStatus() (leaderState bool, err error) {
 
@@ -114,5 +116,32 @@ func (c *VaultClient) LeaderStatus() (leaderState bool, err error) {
         log.Debugf("LeaderStatus: %v", status)
         return status.IsSelf, err
     }
+}
 
+// CRUD Policy functions
+func (c *VaultClient) CreatePolicy(policy crd.Policy) (err error) {
+    log.Debugf("CreatePolicy: %v", policy)
+    //TODO: make name, rules
+    err = c.Client.Sys().PutPolicy(name, rules) //https://godoc.org/github.com/hashicorp/vault/api#Sys.PutPolicy
+    if err != nil {
+        log.Errorf("Error creating Policy %v", name)
+        return err
+    }
+
+    tokenData, err := c.Client.TokenAuth().Create(opts) //https://godoc.org/github.com/hashicorp/vault/api#TokenAuth.Create
+    //TODO: make name
+    if err != nil {
+        log.Errorf("Error creating Token %v", name)
+        return err
+    }
+    //TODO: extract token and return
+}
+
+func (c *VaultClient) DeletePolicy(policy crd.Policy) (err error) {
+    //TODO: make name
+    err := c.Client.Sys().DeletePolicy(name)
+    if err != nil {
+        log.Errorf("Error deleting Policy %v", name)
+        return err
+    }
 }

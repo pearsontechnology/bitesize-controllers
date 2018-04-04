@@ -8,13 +8,17 @@ import (
     log "github.com/Sirupsen/logrus"
     vault "github.com/pearsontechnology/bitesize-controllers/vault-controller/vault"
     k8s "github.com/pearsontechnology/bitesize-controllers/vault-controller/kubernetes"
+    "github.com/pearsontechnology/bitesize-controllers/vault-controller/crd"
+    "github.com/pearsontechnology/bitesize-controllers/vault-controller/crd/client"
+	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
 const version = "0.1"
 const defaultNameSpace = "kube-system"
+const defaultSvcTld = ".svc.cluster.local"
 const defaultVaultLabel = "vault"
 const defaultVaultPort = "8243"
 const defaultVaultScheme = "https"
-const defaultVaultAddr = "http://localhost:8200"
+const defaultVaultAddress = "https://vault." + defaultNameSpace + defaultSvcTld + ":" + defaultVaultPort
 const defaultReloadFrequency = "30s"
 const defaultUnsealSecretName = "vault-unseal-keys"
 const defaultUnsealSecretKey = "unseal-key"
@@ -23,6 +27,22 @@ const defaultTokenlSecretKey = "root-token"
 
 func init() {
 
+}
+
+func createCRD() {
+    log.Debugf("Creating CRD")
+    config, err := rest.InClusterConfig()
+    if err != nil {
+        log.Errorf("createCRD config error: %v", err.Error())
+    }
+    clientset, err := apiextcs.NewForConfig(config)
+    if err != nil {
+        log.Errorf("createCRD client error: %v", err.Error())
+    }
+    err = crd.CreateCRD(clientset)
+    if err != nil {
+        log.Errorf("createCRD create error: %v", err.Error())
+    }
 }
 
 func deletePod(name string, namespace string) {
@@ -77,6 +97,56 @@ func initInstance(c *vault.VaultClient, onKubernetes bool) (r *vault.VaultClient
     }
 }
 
+func startCRD() {
+
+        config, err := rest.InClusterConfig()
+        if err != nil {
+            log.Errorf("InClusterConfig error: %v", err.Error())
+        }
+        // Create CRD and client
+        log.Debugf("Creating CRD")
+        clientset, err := apiextcs.NewForConfig(config)
+        if err != nil {
+            log.Errorf("apiextcs client error: %v", err.Error())
+        }
+        err = crd.CreateCRD(clientset)
+        if err != nil {
+            log.Errorf("createCRD error: %v", err.Error())
+        }
+        crdcs, _, err := crd.NewClient(config)
+        if err != nil {
+            log.Errorf("crdcs create error: %v", err.Error())
+        }
+
+        crdclient := client.CrdClient(crdcs, vaultNamespace)
+        crdVaultClient, err := vault.NewVaultClient(vaultAddress, vaultToken)
+        // Example Controller
+        // Watch for changes in Example objects and fire Add, Delete, Update callbacks
+        _, controller := cache.NewInformer(
+            crdclient.NewListWatch(),
+            &amp;crd.Policy{},
+            time.Minute*10,
+            cache.ResourceEventHandlerFuncs{
+                AddFunc: func(obj interface{}) {
+                    log.Infof("add: %s \n", obj)
+                    crdVaultClient.CreatePolicy(obj)
+                },
+                DeleteFunc: func(obj interface{}) {
+                    log.Infof("delete: %s \n", obj)
+                    crdVaultClient.DeletePolicy(obj)
+                },
+                UpdateFunc: func(oldObj, newObj interface{}) {
+                    log.Infof("Update old: %s \n      New: %s\n", oldObj, newObj)
+                    crdVaultClient.UpdatePolicy(oldObj, newObj)
+                },
+            },
+        )
+
+        stop := make(chan struct{})
+        go controller.Run(stop)
+
+}
+
 func main() {
     var err error
     var instanceList map[string]string
@@ -101,6 +171,13 @@ func main() {
         vaultNamespace = defaultNameSpace
     }
     log.Debugf("vaultNamespace: %v", vaultNamespace)
+
+
+    vaultAddress := os.Getenv("VAULT_ADDR")
+    if vaultAddress == "" {
+        vaultAddress = defaultVaultAddress
+    }
+    log.Debugf("vaultAddr: %v", vaultAddr)
 
     vaultPort := os.Getenv("VAULT_PORT")
     if vaultPort == "" {

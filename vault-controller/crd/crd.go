@@ -19,7 +19,8 @@ package crd
 
 import (
 	"reflect"
-	apiextv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"k8s.io/apiextensions-apiserver"
+    apiclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/rest"
+    log "github.com/Sirupsen/logrus"
 )
 
 const pluralName = "vaultperms"
@@ -34,7 +36,7 @@ const groupName = "vault.local"
 const fullName = pluralName + "." + groupName
 const version = "v1"
 
-func getClient()(*apiextv1beta1.Clientset, error) {
+func getClient()(*apiclientset.Clientset, error) {
     var err error
 
     config, err := rest.InClusterConfig()
@@ -42,7 +44,7 @@ func getClient()(*apiextv1beta1.Clientset, error) {
         log.Fatalf("Failed to create client: %v", err.Error())
     }
 
-    clientset, err := apiextv1beta1.NewForConfig(config)
+    clientset, err := apiclientset.NewForConfig(config)
     if err != nil {
         log.Fatalf("Failed to create client: %v", err.Error())
     }
@@ -51,13 +53,13 @@ func getClient()(*apiextv1beta1.Clientset, error) {
 }
 
 func CreateCRD(clientset apiextcs.Interface) error {
-	crd := &apiextv1beta1.CustomResourceDefinition{
-		ObjectMeta: meta_v1.ObjectMeta{Name: fullName},
-		Spec: apiextv1beta1.CustomResourceDefinitionSpec{
+	crd := &apiext.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: fullName},
+		Spec: apiext.CustomResourceDefinitionSpec{
 			Group:   groupName,
 			Version: version,
-			Scope:   apiextv1beta1.Cluster,
-			Names:   apiextv1beta1.CustomResourceDefinitionNames{
+			Scope:   apiext.Cluster,
+			Names:   apiext.CustomResourceDefinitionNames{
 				Plural: pluralName,
 				Kind:   reflect.TypeOf(Policy{}).Name(),
 			},
