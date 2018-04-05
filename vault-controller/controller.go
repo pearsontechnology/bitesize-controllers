@@ -5,12 +5,14 @@ import (
     "net"
     "time"
     "strings"
+    "reflect"
     log "github.com/Sirupsen/logrus"
     vault "github.com/pearsontechnology/bitesize-controllers/vault-controller/vault"
     k8s "github.com/pearsontechnology/bitesize-controllers/vault-controller/kubernetes"
-    "github.com/pearsontechnology/bitesize-controllers/vault-controller/crd"
-    "github.com/pearsontechnology/bitesize-controllers/vault-controller/crd/client"
+    vaultcs "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/client/clientset/versioned"
 	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+    apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+    apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 const version = "0.1"
 const defaultNameSpace = "kube-system"
@@ -24,12 +26,26 @@ const defaultUnsealSecretName = "vault-unseal-keys"
 const defaultUnsealSecretKey = "unseal-key"
 const defaultTokenSecretName = "vault-tokens"
 const defaultTokenlSecretKey = "root-token"
-
+const crdRefreshInterval = "30s"
 func init() {
 
 }
 
-func createCRD() {
+func createCRD() err error {
+
+    crd := &apiext.CustomResourceDefinition{
+    ObjectMeta: metav1.ObjectMeta{Name: "vaultpolicy"},
+    Spec: apiext.CustomResourceDefinitionSpec{
+        Group:   "vaultpolicy",
+        Version: "v1",
+        Scope:   apiext.Cluster,
+        Names:   apiext.CustomResourceDefinitionNames{
+            Plural: "vaultpolicys",
+            Kind:   reflect.TypeOf(Policy{}).Name(),
+            },
+        },
+    }
+
     log.Debugf("Creating CRD")
     config, err := rest.InClusterConfig()
     if err != nil {
@@ -39,10 +55,14 @@ func createCRD() {
     if err != nil {
         log.Errorf("createCRD client error: %v", err.Error())
     }
-    err = crd.CreateCRD(clientset)
-    if err != nil {
+    _, err := apiextcs.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
+    if apierrors.IsAlreadyExists(err) {
+        log.Infof("CRD already exists")
+        return nil
+    } else if err != nil {
         log.Errorf("createCRD create error: %v", err.Error())
     }
+    return err
 }
 
 func deletePod(name string, namespace string) {
@@ -105,46 +125,25 @@ func startCRD() {
         }
         // Create CRD and client
         log.Debugf("Creating CRD")
-        clientset, err := apiextcs.NewForConfig(config)
+        clientset, err := vaultcs.NewForConfig(config)
         if err != nil {
-            log.Errorf("apiextcs client error: %v", err.Error())
+            log.Errorf("vaultcs client error: %v", err.Error())
         }
-        err = crd.CreateCRD(clientset)
+        err = CreateCRD()
         if err != nil {
             log.Errorf("createCRD error: %v", err.Error())
         }
-        crdcs, _, err := crd.NewClient(config)
-        if err != nil {
-            log.Errorf("crdcs create error: %v", err.Error())
-        }
 
-        crdclient := client.CrdClient(crdcs, vaultNamespace)
         crdVaultClient, err := vault.NewVaultClient(vaultAddress, vaultToken)
-        // Example Controller
-        // Watch for changes in Example objects and fire Add, Delete, Update callbacks
-        _, controller := cache.NewInformer(
-            crdclient.NewListWatch(),
-            &amp;crd.Policy{},
-            time.Minute*10,
-            cache.ResourceEventHandlerFuncs{
-                AddFunc: func(obj interface{}) {
-                    log.Infof("add: %s \n", obj)
-                    crdVaultClient.CreatePolicy(obj)
-                },
-                DeleteFunc: func(obj interface{}) {
-                    log.Infof("delete: %s \n", obj)
-                    crdVaultClient.DeletePolicy(obj)
-                },
-                UpdateFunc: func(oldObj, newObj interface{}) {
-                    log.Infof("Update old: %s \n      New: %s\n", oldObj, newObj)
-                    crdVaultClient.UpdatePolicy(oldObj, newObj)
-                },
-            },
-        )
 
-        stop := make(chan struct{})
-        go controller.Run(stop)
+        crdTicker := time.NewTicker(time.Duration(crdRefreshInterval))
 
+        for _ = range crdTicker.C {
+            list, err := clientset.PolicyV1().Policies().List(metav1.ListOptions{})
+            for _, policy := range list.Items {
+                fmt.Debugf("Policy %s found\n", policy.Name)
+            }
+        }
 }
 
 func main() {

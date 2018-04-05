@@ -5,8 +5,8 @@ import (
     "errors"
     "time"
     vault "github.com/hashicorp/vault/api"
+    vaultpolicy "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vaultpolicy/v1"
     log "github.com/Sirupsen/logrus"
-    "github.com/pearsontechnology/bitesize-controllers/vault-controller/crd"
 )
 
 type VaultClient struct {
@@ -119,7 +119,7 @@ func (c *VaultClient) LeaderStatus() (leaderState bool, err error) {
 }
 
 // CRUD Policy functions
-func (c *VaultClient) CreatePolicy(policy crd.Policy) (err error) {
+func (c *VaultClient) CreatePolicy(policy vaultpolicy.Policy) (err error) {
     log.Debugf("CreatePolicy: %v", policy)
     //TODO: make name, rules
     err = c.Client.Sys().PutPolicy(name, rules) //https://godoc.org/github.com/hashicorp/vault/api#Sys.PutPolicy
@@ -128,20 +128,12 @@ func (c *VaultClient) CreatePolicy(policy crd.Policy) (err error) {
         return err
     }
 
-    tokenData, err := c.Client.TokenAuth().Create(opts) //https://godoc.org/github.com/hashicorp/vault/api#TokenAuth.Create
+    tokenData, err := c.Client.Auth().Token().Create(opts) //https://godoc.org/github.com/hashicorp/vault/api#TokenAuth.Create
     //TODO: make name
     if err != nil {
         log.Errorf("Error creating Token %v", name)
         return err
     }
     //TODO: extract token and return
-}
-
-func (c *VaultClient) DeletePolicy(policy crd.Policy) (err error) {
-    //TODO: make name
-    err := c.Client.Sys().DeletePolicy(name)
-    if err != nil {
-        log.Errorf("Error deleting Policy %v", name)
-        return err
-    }
+    return err
 }
