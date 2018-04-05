@@ -5,17 +5,12 @@ import (
     "net"
     "time"
     "strings"
-    "reflect"
     log "github.com/Sirupsen/logrus"
     vault "github.com/pearsontechnology/bitesize-controllers/vault-controller/vault"
     k8s "github.com/pearsontechnology/bitesize-controllers/vault-controller/kubernetes"
     vaultcs "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/client/clientset/versioned"
-    vaultpolicy "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vaultpolicy/v1"
-	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-    apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/client-go/rest"
-    apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 const version = "0.1"
 const defaultNameSpace = "kube-system"
@@ -32,40 +27,6 @@ const defaultTokenlSecretKey = "root-token"
 const crdRefreshInterval = "30s"
 func init() {
 
-}
-
-func createCRD() error {
-
-    crd := &apiext.CustomResourceDefinition{
-    ObjectMeta: metav1.ObjectMeta{Name: "vaultpolicy"},
-    Spec: apiext.CustomResourceDefinitionSpec{
-        Group:   "vaultpolicy",
-        Version: "v1",
-        Scope:   apiext.ClusterScoped,
-        Names:   apiext.CustomResourceDefinitionNames{
-            Plural: "vaultpolicys",
-            Kind:   reflect.TypeOf(vaultpolicy.Policy{}).Name(),
-            },
-        },
-    }
-
-    log.Debugf("Creating CRD")
-    config, err := rest.InClusterConfig()
-    if err != nil {
-        log.Errorf("createCRD config error: %v", err.Error())
-    }
-    clientset, err := apiextcs.NewForConfig(config)
-    if err != nil {
-        log.Errorf("createCRD client error: %v", err.Error())
-    }
-    _, err = clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
-    if apierrors.IsAlreadyExists(err) {
-        log.Infof("CRD already exists")
-        return nil
-    } else if err != nil {
-        log.Errorf("createCRD create error: %v", err.Error())
-    }
-    return err
 }
 
 func deletePod(name string, namespace string) {
@@ -131,10 +92,6 @@ func startCRD(vaultAddress string, vaultToken string) {
         clientset, err := vaultcs.NewForConfig(config)
         if err != nil {
             log.Errorf("vaultcs client error: %v", err.Error())
-        }
-        err = createCRD()
-        if err != nil {
-            log.Errorf("createCRD error: %v", err.Error())
         }
 
         crdVaultClient, err := vault.NewVaultClient(vaultAddress, vaultToken)
