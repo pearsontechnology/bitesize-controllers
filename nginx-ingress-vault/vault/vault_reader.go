@@ -12,7 +12,7 @@ import (
     "k8s.io/client-go/1.4/kubernetes"
     "k8s.io/client-go/1.4/rest"
     "github.com/google/uuid"
-    "github.com/avast/retry-go"
+    "github.com/giantswarm/retry-go"
 )
 
 type VaultReader struct {
@@ -124,14 +124,23 @@ func (r *VaultReader) Ready() bool {
     var err error
     var status *vault.SealStatusResponse
 
-    retry.Do(func() error {
-            status, err = r.Client.Sys().SealStatus()
-            return err},
-        retry.Delay(1 * time.Second),
-        retry.Attempts(5),
-        retry.OnRetry(func(n uint, err error) {
-	        log.Errorf("Error count: %v getting vault status: %d", n+1, err.Error())
-	    }),
+    getStatus := func() error {
+		status, err = r.Client.Sys().SealStatus()
+        return err
+	}
+
+    errcheck := func(err error) bool {
+        if err != nil {
+            log.Errorf("Retrying vault status: %d", err.Error())
+            return true
+        }
+        return false
+	}
+
+    retry.Do(getStatus,
+        retry.Sleep(1 * time.Second),
+        retry.MaxTries(5),
+        retry.RetryChecker(errcheck),
     )
 
     if err != nil || status == nil {
@@ -162,14 +171,24 @@ func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
     vaultPath := "secret/ssl/" + hostname
 
     var keySecretData *vault.Secret
-    retry.Do(func() error {
-            keySecretData, err = r.Client.Logical().Read(vaultPath)
-            return err},
-        retry.Delay(1 * time.Second),
-        retry.Attempts(5),
-        retry.OnRetry(func(n uint, err error) {
-	        log.Errorf("Error count: %v getting vault data: %d", n+1, err.Error())
-	    }),
+
+    getData := func() error {
+       keySecretData, err = r.Client.Logical().Read(vaultPath)
+       return err
+	}
+
+    errcheck := func(err error) bool {
+        if err != nil {
+            log.Errorf("retrying retrieve secrets: %d", err.Error())
+            return true
+        }
+        return false
+	}
+
+    retry.Do(getData,
+        retry.Sleep(1 * time.Second),
+        retry.MaxTries(5),
+        retry.RetryChecker(errcheck),
     )
 
     if err != nil {
