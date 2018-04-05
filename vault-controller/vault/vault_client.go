@@ -119,21 +119,39 @@ func (c *VaultClient) LeaderStatus() (leaderState bool, err error) {
 }
 
 // CRUD Policy functions
-func (c *VaultClient) CreatePolicy(policy vaultpolicy.Policy) (err error) {
+func (c *VaultClient) CreatePolicy(policy vaultpolicy.Policy) (token string, err error) {
     log.Debugf("CreatePolicy: %v", policy)
-    //TODO: make name, rules
-    err = c.Client.Sys().PutPolicy(name, rules) //https://godoc.org/github.com/hashicorp/vault/api#Sys.PutPolicy
-    if err != nil {
-        log.Errorf("Error creating Policy %v", name)
-        return err
+
+    p, err := c.Client.Sys().GetPolicy(policy.Name)
+    if p != "" {
+        log.Infof("Policy already exists: %v", policy.Name)
+        return "", nil
     }
 
-    tokenData, err := c.Client.Auth().Token().Create(opts) //https://godoc.org/github.com/hashicorp/vault/api#TokenAuth.Create
-    //TODO: make name
-    if err != nil {
-        log.Errorf("Error creating Token %v", name)
-        return err
+    var rules string
+    for _, s := range policy.Spec {
+        rules = rules + "path \"" + s.Path + "\" { capabilities = [\"" + s.Permission + "\"] }"
     }
-    //TODO: extract token and return
-    return err
+    err = c.Client.Sys().PutPolicy(policy.Name, rules) //https://godoc.org/github.com/hashicorp/vault/api#Sys.PutPolicy
+    if err != nil {
+        log.Errorf("Error creating Policy %v", policy.Name)
+        return "", err
+    }
+    log.Debugf("CreatePolicy created policy: %v", policy.Name)
+    var policies []string
+    policies = append(policies, policy.Name)
+    opts := &vault.TokenCreateRequest{
+        Policies: policies,
+        DisplayName: policy.Name,
+		Lease: "24h"}
+
+    log.Debugf("CreatePolicy creating token: %v", opts)
+
+    tokenData, err := c.Client.Auth().Token().Create(opts) //https://godoc.org/github.com/hashicorp/vault/api#TokenAuth.Create
+    if err != nil {
+        log.Errorf("Error creating Token %v", policy.Name)
+        return "", err
+    }
+    token = tokenData.Auth.ClientToken
+    return token, err
 }

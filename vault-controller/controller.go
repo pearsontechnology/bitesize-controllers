@@ -10,8 +10,11 @@ import (
     vault "github.com/pearsontechnology/bitesize-controllers/vault-controller/vault"
     k8s "github.com/pearsontechnology/bitesize-controllers/vault-controller/kubernetes"
     vaultcs "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/client/clientset/versioned"
+    vaultpolicy "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vaultpolicy/v1"
 	apiextcs "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
     apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    "k8s.io/client-go/rest"
     apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 const version = "0.1"
@@ -31,17 +34,17 @@ func init() {
 
 }
 
-func createCRD() err error {
+func createCRD() error {
 
     crd := &apiext.CustomResourceDefinition{
     ObjectMeta: metav1.ObjectMeta{Name: "vaultpolicy"},
     Spec: apiext.CustomResourceDefinitionSpec{
         Group:   "vaultpolicy",
         Version: "v1",
-        Scope:   apiext.Cluster,
+        Scope:   apiext.ClusterScoped,
         Names:   apiext.CustomResourceDefinitionNames{
             Plural: "vaultpolicys",
-            Kind:   reflect.TypeOf(Policy{}).Name(),
+            Kind:   reflect.TypeOf(vaultpolicy.Policy{}).Name(),
             },
         },
     }
@@ -55,7 +58,7 @@ func createCRD() err error {
     if err != nil {
         log.Errorf("createCRD client error: %v", err.Error())
     }
-    _, err := apiextcs.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
+    _, err = clientset.ApiextensionsV1beta1().CustomResourceDefinitions().Create(crd)
     if apierrors.IsAlreadyExists(err) {
         log.Infof("CRD already exists")
         return nil
@@ -117,7 +120,7 @@ func initInstance(c *vault.VaultClient, onKubernetes bool) (r *vault.VaultClient
     }
 }
 
-func startCRD() {
+func startCRD(vaultAddress string, vaultToken string) {
 
         config, err := rest.InClusterConfig()
         if err != nil {
@@ -129,19 +132,24 @@ func startCRD() {
         if err != nil {
             log.Errorf("vaultcs client error: %v", err.Error())
         }
-        err = CreateCRD()
+        err = createCRD()
         if err != nil {
             log.Errorf("createCRD error: %v", err.Error())
         }
 
         crdVaultClient, err := vault.NewVaultClient(vaultAddress, vaultToken)
-
-        crdTicker := time.NewTicker(time.Duration(crdRefreshInterval))
+        t, _ := time.ParseDuration(crdRefreshInterval)
+        crdTicker := time.NewTicker(t)
 
         for _ = range crdTicker.C {
-            list, err := clientset.PolicyV1().Policies().List(metav1.ListOptions{})
+            list, _ := clientset.VaultpolicyV1().Policies().List(metav1.ListOptions{})
             for _, policy := range list.Items {
-                fmt.Debugf("Policy %s found\n", policy.Name)
+                log.Debugf("Policy %s found\n", policy.Name)
+                token, err := crdVaultClient.CreatePolicy(policy)
+                if err != nil && token != "" {
+                    log.Debugf("Policy %s token generated: %v\n", policy.Name, token)
+                    k8s.PutSecret(policy.Name, policy.Name, token, policy.Namespace)
+                }
             }
         }
 }
@@ -171,12 +179,11 @@ func main() {
     }
     log.Debugf("vaultNamespace: %v", vaultNamespace)
 
-
     vaultAddress := os.Getenv("VAULT_ADDR")
     if vaultAddress == "" {
         vaultAddress = defaultVaultAddress
     }
-    log.Debugf("vaultAddr: %v", vaultAddr)
+    log.Debugf("vaultAddress: %v", vaultAddress)
 
     vaultPort := os.Getenv("VAULT_PORT")
     if vaultPort == "" {
@@ -212,6 +219,8 @@ func main() {
     if unsealKeys == "" {
         log.Errorf("Invalid value for env var VAULT_UNSEAL_KEYS: %v", unsealKeys)
     }
+
+    startCRD(vaultAddress, vaultToken)
 
     // Controller loop
     for {
