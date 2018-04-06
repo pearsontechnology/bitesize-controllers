@@ -12,6 +12,7 @@ import (
     "k8s.io/client-go/1.4/kubernetes"
     "k8s.io/client-go/1.4/rest"
     "github.com/google/uuid"
+    "github.com/giantswarm/retry-go"
 )
 
 type VaultReader struct {
@@ -120,12 +121,32 @@ func (r *VaultReader) Ready() bool {
         return false
     }
 
-    status, err := r.Client.Sys().SealStatus()
+    var err error
+    var status *vault.SealStatusResponse
+
+    getStatus := func() error {
+		status, err = r.Client.Sys().SealStatus()
+        return err
+	}
+
+    errcheck := func(err error) bool {
+        if err != nil {
+            log.Errorf("Retrying vault status: %d", err.Error())
+            return true
+        }
+        return false
+	}
+
+    retry.Do(getStatus,
+        retry.Sleep(1 * time.Second),
+        retry.MaxTries(5),
+        retry.RetryChecker(errcheck),
+    )
+
     if err != nil || status == nil {
-        log.Info("Error retrieving vault status: %v, %v", status, err)
+        log.Errorf("Error retrieving vault status: %v, %v", status, err.Error())
         return false
     }
-
     return !status.Sealed
 }
 
@@ -137,7 +158,7 @@ func (r *VaultReader) RenewToken() {
         tokenData, err := r.Client.Logical().Write(tokenPath, nil)
 
         if err != nil || tokenData == nil {
-            log.Errorf("Error renewing Vault token %v, %v\n", err, tokenData)
+            log.Errorf("Error renewing Vault token %v, %v", err, tokenData)
         } else {
             log.Infof("Successfully renewed Vault token.\n")
         }
@@ -145,12 +166,37 @@ func (r *VaultReader) RenewToken() {
 }
 
 func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
-    var e error
+    var e, err error
 
     vaultPath := "secret/ssl/" + hostname
 
-    keySecretData, err := r.Client.Logical().Read(vaultPath)
-    if err != nil || keySecretData == nil {
+    var keySecretData *vault.Secret
+
+    getData := func() error {
+       keySecretData, err = r.Client.Logical().Read(vaultPath)
+       return err
+	}
+
+    errcheck := func(err error) bool {
+        if err != nil {
+            log.Errorf("retrying retrieve secrets: %d", err.Error())
+            return true
+        }
+        return false
+	}
+
+    retry.Do(getData,
+        retry.Sleep(1 * time.Second),
+        retry.MaxTries(5),
+        retry.RetryChecker(errcheck),
+    )
+
+    if err != nil {
+        e = fmt.Errorf("Error retrieving secret for %v: %v", hostname, err.Error())
+        return nil, nil, e
+    }
+
+    if keySecretData == nil {
         e = fmt.Errorf("No secret for %v", hostname)
         return nil, nil, e
     }
