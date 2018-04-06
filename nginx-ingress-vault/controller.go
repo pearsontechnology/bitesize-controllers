@@ -31,7 +31,7 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.9.7"
+const version = "1.9.8"
 
 func main() {
 
@@ -42,7 +42,7 @@ func main() {
         log.SetLevel(log.DebugLevel)
     }
 
-    log.Infof("\n Ingress Controller version: %v", version)
+    log.Infof("Ingress Controller version: %v", version)
 
     v := os.Getenv("RELOAD_FREQUENCY")
     reloadFrequency, err := time.ParseDuration(v)
@@ -76,7 +76,7 @@ func main() {
             }
             if vault.Enabled {
                 go vault.RenewToken()
-            }    
+            }
         }
 
         if !vault.Ready() {
