@@ -27,14 +27,14 @@ func listOptions(value string) metav1.ListOptions {
 }
 
 func getClient()(*kubernetes.Clientset, error) {
-    var err error
+    clientset := &kubernetes.Clientset{}
 
     config, err := rest.InClusterConfig()
     if err != nil {
         log.Fatalf("Failed to create client: %v", err.Error())
     }
 
-    clientset, err := kubernetes.NewForConfig(config)
+    clientset, err = kubernetes.NewForConfig(config)
     if err != nil {
         log.Fatalf("Failed to create client: %v", err.Error())
     }
@@ -43,10 +43,11 @@ func getClient()(*kubernetes.Clientset, error) {
 }
 
 func GetPods(label string, namespace string) (pods *corev1.PodList, err error) {
+    pods = &corev1.PodList{}
 
     clientset, err := getClient()
     if err == nil {
-        pods, err := clientset.CoreV1().Pods(namespace).List(listOptions(label))
+        pods, err = clientset.CoreV1().Pods(namespace).List(listOptions(label))
         log.Debugf("GetPods found: %v pods in %v with label %v", len(pods.Items), namespace, label)
         if err != nil {
             log.Infof("Error GetPods: %v", err.Error())
@@ -95,7 +96,7 @@ func DeletePod(podName string, namespace string) (err error) {
     }
 }
 
-func GetSecret(secretName, string, secretKey string, namespace string)(secretValue string) {
+func GetSecret(secretName, string, secretKey string, namespace string) (secretValue string) {
 
     clientset, err := getClient()
     secret, err := clientset.CoreV1().Secrets(namespace).Get(secretName, metav1.GetOptions{})

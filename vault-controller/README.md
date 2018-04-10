@@ -6,8 +6,8 @@ Reqd vars:
 VAULT_TOKEN or VAULT_TOKEN_FILE (VAULT_TOKEN takes precedence)
 if VAULT_TOKEN is not a valid uuid and VAULT_TOKEN_FILE exists then VAULT_TOKEN will be exported from its contents
 
-VAULT_UNSEAL_KEYS or VAULT_UNSEAL_KEYS_FILES (VAULT_UNSEAL_KEYS takes precedence)
-if VAULT_TOKEN is empty and VAULT_UNSEAL_KEYS_FILES exists then VAULT_UNSEAL_KEYS will be exported from their contents
+VAULT_UNSEAL_KEYS or VAULT_UNSEAL_KEYS_FILE (VAULT_UNSEAL_KEYS takes precedence)
+if VAULT_TOKEN is empty and VAULT_UNSEAL_KEYS_FILE exists then VAULT_UNSEAL_KEYS will be exported from their contents
 
 Optional vars:
 

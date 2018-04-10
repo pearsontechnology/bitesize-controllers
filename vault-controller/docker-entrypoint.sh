@@ -13,9 +13,9 @@ if [[ ! ${VAULT_TOKEN} =~ ^\{?[A-F0-9a-f]{8}-[A-F0-9a-f]{4}-[A-F0-9a-f]{4}-[A-F0
   [ -f ${VAULT_TOKEN_FILE} ] && export VAULT_TOKEN=`cat ${VAULT_TOKEN_FILE}`
 fi
 
-# VAULT_UNSEAL_KEYS overrides VAULT_UNSEAL_KEYS_FILES
-if [[ ! -z ${VAULT_UNSEAL_KEYS_FILES} && "x${VAULT_UNSEAL_KEYS}x" == "xx" ]]; then
-    for f in ${VAULT_UNSEAL_KEYS_FILES}; do
+# VAULT_UNSEAL_KEYS overrides VAULT_UNSEAL_KEYS_FILE
+if [[ ! -z ${VAULT_UNSEAL_KEYS_FILE} && "x${VAULT_UNSEAL_KEYS}x" == "xx" ]]; then
+    for f in ${VAULT_UNSEAL_KEYS_FILE}; do
         [ -f $f ] && export VAULT_UNSEAL_KEYS="`cat $f`,$VAULT_UNSEAL_KEYS"
     done
     unset f

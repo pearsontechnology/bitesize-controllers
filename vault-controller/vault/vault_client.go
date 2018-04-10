@@ -50,15 +50,17 @@ func (c *VaultClient) InitStatus() (initState bool, err error) {
 }
 
 // Init with defaults
-func (c *VaultClient) Init() (token string, keys []string, err error) {
+func (c *VaultClient) Init(shares int, threshold int) (token string, keys []string, err error) {
     initReq := &vault.InitRequest {
-                SecretShares: 5,
-                SecretThreshold: 3,
+                SecretShares: shares,
+                SecretThreshold: threshold,
             }
 
     response, err := c.Client.Sys().Init(initReq)
     if err != nil {
         log.Errorf("Error initializing Vault! %v", err.Error())
+        var keys []string
+        return "", keys, err
     } else {
         log.Infof("Initialised instance %v", c.Client.Address())
         log.Debugf("InitStatus: %v", response)
@@ -93,6 +95,7 @@ func (c *VaultClient) Unseal(unsealKeys string) (sealState bool, err error) {
         resp, err := c.Client.Sys().Unseal(key)
         if err != nil || resp == nil {
             log.Errorf("Error Unsealing: %v", err.Error())
+            return false, err
         }
         if resp.Sealed == false {
             log.Infof("Instance unsealed")

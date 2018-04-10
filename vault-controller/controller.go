@@ -4,7 +4,9 @@ import (
     "os"
     "net"
     "time"
+    "errors"
     "strings"
+    "strconv"
     log "github.com/Sirupsen/logrus"
     vault "github.com/pearsontechnology/bitesize-controllers/vault-controller/vault"
     k8s "github.com/pearsontechnology/bitesize-controllers/vault-controller/kubernetes"
@@ -21,10 +23,12 @@ const defaultVaultScheme = "https"
 const defaultVaultAddress = "https://vault." + defaultNameSpace + defaultSvcTld + ":" + defaultVaultPort
 const defaultReloadFrequency = "30s"
 const defaultUnsealSecretName = "vault-unseal-keys"
-const defaultUnsealSecretKey = "unseal-key"
+const defaultUnsealSecretKey = "unseal-keys"
 const defaultTokenSecretName = "vault-tokens"
 const defaultTokenlSecretKey = "root-token"
 const crdRefreshInterval = "30s"
+const defaultInitShares = 5
+const defaultInitThreashold = 3
 func init() {
 
 }
@@ -38,47 +42,66 @@ func deletePod(name string, namespace string) {
     }
 }
 
-func initInstance(c *vault.VaultClient, onKubernetes bool) (r *vault.VaultClient, unsealKeys string, err error) {
+func initInstance(c *vault.VaultClient, onKubernetes bool, shares int, threshold int) (r *vault.VaultClient, unsealKeys string, err error) {
+    var token string
+    var keys []string
     instanceAddress := c.Client.Address()
-    token, keys, err := c.Init()
-    if err != nil {
-        log.Errorf("Error Initialise failed: %v", err.Error())
-        return c, "", err
-    } else {
-        if onKubernetes == true {
-            unsealSecretName := os.Getenv("VAULT_UNSEAL_SECRET_NAME")
-            if unsealSecretName == "" {
-                unsealSecretName = defaultUnsealSecretName
-            }
-            unsealSecretKey := os.Getenv("VAULT_UNSEAL_SECRET_KEY")
-            if unsealSecretKey == "" {
-                unsealSecretKey = defaultUnsealSecretKey
-            }
-            tokenSecretName := os.Getenv("VAULT_TOKEN_SECRET_NAME")
-            if tokenSecretName == "" {
-                tokenSecretName = defaultTokenSecretName
-            }
-            tokenSecretKey := os.Getenv("VAULT_TOKEN_SECRET_KEY")
-            if tokenSecretKey == "" {
-                tokenSecretKey = defaultTokenlSecretKey
-            }
-            vaultNamespace := os.Getenv("VAULT_NAMESPACE")
-            if vaultNamespace == "" {
-                vaultNamespace = defaultNameSpace
-            }
-            var k string
-            for _, v := range keys {
-                k = k + string(v) + ","
-            }
-            unsealKeys = strings.Trim(k, ",")
-            log.Debugf("Stashing %v Unseal keys in: %v/%v", len(strings.Split(unsealKeys, ",")), vaultNamespace, unsealSecretName)
-            k8s.PutSecret(unsealSecretName, unsealSecretKey, unsealKeys, vaultNamespace)
-            log.Debugf("Stashing Root Token in: %v/%v", vaultNamespace, unsealSecretName)
-            k8s.PutSecret(tokenSecretName, tokenSecretKey, token, vaultNamespace)
+    if onKubernetes == true {
+        unsealSecretName := os.Getenv("VAULT_UNSEAL_SECRET_NAME")
+        if unsealSecretName == "" {
+            unsealSecretName = defaultUnsealSecretName
         }
-         r, err := vault.NewVaultClient(instanceAddress, token)
-         return r, unsealKeys, err
+        unsealSecretKey := os.Getenv("VAULT_UNSEAL_SECRET_KEY")
+        if unsealSecretKey == "" {
+            unsealSecretKey = defaultUnsealSecretKey
+        }
+        tokenSecretName := os.Getenv("VAULT_TOKEN_SECRET_NAME")
+        if tokenSecretName == "" {
+            tokenSecretName = defaultTokenSecretName
+        }
+        tokenSecretKey := os.Getenv("VAULT_TOKEN_SECRET_KEY")
+        if tokenSecretKey == "" {
+            tokenSecretKey = defaultTokenlSecretKey
+        }
+        vaultNamespace := os.Getenv("VAULT_NAMESPACE")
+        if vaultNamespace == "" {
+            vaultNamespace = defaultNameSpace
+        }
+        s := k8s.GetSecret(unsealSecretName, unsealSecretKey, vaultNamespace, vaultNamespace)
+        if len(strings.Split(s, ",")) >= threshold {
+            log.Warnf("WARNING: Existing Unseal keys found in secret %v/%v:%v", vaultNamespace,unsealSecretName,unsealSecretKey )
+            return c, "", errors.New("Instance already inititialised")
+        }
+        token, keys, err = c.Init(shares, threshold)
+        if err != nil {
+            log.Errorf("Error Initialise failed: %v", err.Error())
+            return c, "", err
+        }
+        var k string
+        for _, v := range keys {
+            k = k + string(v) + ","
+        }
+        unsealKeys = strings.Trim(k, ",")
+        log.Debugf("Stashing %v Unseal keys in: %v/%v", len(strings.Split(unsealKeys, ",")), vaultNamespace, unsealSecretName)
+        k8s.PutSecret(unsealSecretName, unsealSecretKey, unsealKeys, vaultNamespace)
+        log.Debugf("Stashing Root Token in: %v/%v", vaultNamespace, unsealSecretName)
+        k8s.PutSecret(tokenSecretName, tokenSecretKey, token, vaultNamespace)
+    } else {
+        token, keys, err = c.Init(shares, threshold)
+        if err != nil {
+            log.Errorf("Error Initialise failed: %v", err.Error())
+            return c, "", err
+        }
+        var k string
+        for _, v := range keys {
+            k = k + string(v) + ","
+        }
+        unsealKeys = strings.Trim(k, ",")
+        log.Infof("Unseal Keys: %v", unsealKeys)
+        log.Infof("Root token: %v", token)
     }
+    r, err = vault.NewVaultClient(instanceAddress, token)
+    return r, unsealKeys, err
 }
 
 func startCRD(vaultAddress string, vaultToken string) {
@@ -88,7 +111,7 @@ func startCRD(vaultAddress string, vaultToken string) {
             log.Errorf("InClusterConfig error: %v", err.Error())
         }
         // Create CRD and client
-        log.Debugf("Creating CRD")
+        log.Infof("Creating CRD")
         clientset, err := vaultcs.NewForConfig(config)
         if err != nil {
             log.Errorf("vaultcs client error: %v", err.Error())
@@ -98,17 +121,20 @@ func startCRD(vaultAddress string, vaultToken string) {
         t, _ := time.ParseDuration(crdRefreshInterval)
         crdTicker := time.NewTicker(t)
 
-        for _ = range crdTicker.C {
-            list, _ := clientset.VaultpolicyV1().Policies().List(metav1.ListOptions{})
-            for _, policy := range list.Items {
-                log.Debugf("Policy %s found\n", policy.Name)
-                token, err := crdVaultClient.CreatePolicy(policy)
-                if err != nil && token != "" {
-                    log.Debugf("Policy %s token generated: %v\n", policy.Name, token)
-                    k8s.PutSecret(policy.Name, policy.Name, token, policy.Namespace)
+        go func() {
+            for _ = range crdTicker.C {
+                log.Debugf("crdTicker fired...")
+                list, _ := clientset.VaultpolicyV1().Policies().List(metav1.ListOptions{})
+                for _, policy := range list.Items {
+                    log.Debugf("Policy %s found\n", policy.Name)
+                    token, err := crdVaultClient.CreatePolicy(policy)
+                    if err != nil && token != "" {
+                        log.Debugf("Policy %s token generated: %v\n", policy.Name, token)
+                        k8s.PutSecret(policy.Name, policy.Name, token, policy.Namespace)
+                    }
                 }
             }
-        }
+        }()
 }
 
 func main() {
@@ -129,7 +155,6 @@ func main() {
         vaultLabel = defaultVaultLabel
     }
     log.Debugf("vaultLabel: %v", vaultLabel)
-
     vaultNamespace := os.Getenv("VAULT_NAMESPACE")
     if vaultNamespace == "" {
         vaultNamespace = defaultNameSpace
@@ -158,6 +183,18 @@ func main() {
     vaultToken := os.Getenv("VAULT_TOKEN")
     log.Debugf("vaultToken: %v", vaultToken)
 
+    vaultInitShares, err := strconv.Atoi(os.Getenv("VAULT_INIT_SHARES"))
+    if err != nil {
+        vaultInitShares = defaultInitShares
+    }
+    log.Debugf("vaultInitShares: %v", vaultInitShares)
+
+    vaultInitThreshold, err := strconv.Atoi(os.Getenv("VAULT_INIT_THRESHOLD"))
+    if err != nil {
+        vaultInitThreshold = defaultInitThreashold
+    }
+    log.Debugf("vaultInitThreshold: %v", vaultInitThreshold)
+
     onKubernetes := true
 
     if os.Getenv("KUBERNETES_SERVICE_HOST") == "" {
@@ -177,11 +214,11 @@ func main() {
         log.Errorf("Invalid value for env var VAULT_UNSEAL_KEYS: %v", unsealKeys)
     }
 
-    startCRD(vaultAddress, vaultToken)
+    go startCRD(vaultAddress, vaultToken)
 
     // Controller loop
     for {
-
+        log.Debugf("Starting controller loop")
         vaultInstances := os.Getenv("VAULT_INSTANCES")
 
         if vaultInstances == "" && onKubernetes == false {
@@ -239,9 +276,9 @@ func main() {
                 }
                 if initState == true {
                     log.Debugf("Instance initialised: %v", name)
-                } else {
+                } else if initState == false {
                     log.Infof("Instance NOT initialised: %v", name)
-                    vaultClient, unsealKeys, err = initInstance(vaultClient, onKubernetes)
+                    vaultClient, unsealKeys, err = initInstance(vaultClient, onKubernetes, vaultInitShares, vaultInitThreshold)
                     if err != nil {
                         log.Errorf("ERROR: init resturned error: %v", err.Error())
                         //TODO handle errors
