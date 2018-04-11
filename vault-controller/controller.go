@@ -67,9 +67,10 @@ func initInstance(c *vault.VaultClient, onKubernetes bool, shares int, threshold
         if vaultNamespace == "" {
             vaultNamespace = defaultNameSpace
         }
-        s := k8s.GetSecret(unsealSecretName, unsealSecretKey, vaultNamespace, vaultNamespace)
+        s := k8s.GetSecret(unsealSecretName, unsealSecretKey, vaultNamespace)
         if len(strings.Split(s, ",")) >= threshold {
             log.Warnf("WARNING: Existing Unseal keys found in secret %v/%v:%v", vaultNamespace,unsealSecretName,unsealSecretKey )
+            log.Debugf("Keys: %v", s)
             return c, "", errors.New("Instance already inititialised")
         }
         token, keys, err = c.Init(shares, threshold)
@@ -82,9 +83,9 @@ func initInstance(c *vault.VaultClient, onKubernetes bool, shares int, threshold
             k = k + string(v) + ","
         }
         unsealKeys = strings.Trim(k, ",")
-        log.Debugf("Stashing %v Unseal keys in: %v/%v", len(strings.Split(unsealKeys, ",")), vaultNamespace, unsealSecretName)
+        log.Debugf("Stashing %v Unseal keys in: %v/%v:%v", len(strings.Split(unsealKeys, ",")), vaultNamespace, unsealSecretName, unsealSecretKey)
         k8s.PutSecret(unsealSecretName, unsealSecretKey, unsealKeys, vaultNamespace)
-        log.Debugf("Stashing Root Token in: %v/%v", vaultNamespace, unsealSecretName)
+        log.Debugf("Stashing Root Token in: %v/%v:%v", vaultNamespace, tokenSecretName, tokenSecretKey)
         k8s.PutSecret(tokenSecretName, tokenSecretKey, token, vaultNamespace)
     } else {
         token, keys, err = c.Init(shares, threshold)

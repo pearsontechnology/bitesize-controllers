@@ -2,7 +2,6 @@ package kubernetes
 
 import (
     "strings"
-    "fmt"
     "time"
     "encoding/json"
     "encoding/base64"
@@ -62,6 +61,7 @@ func GetPods(label string, namespace string) (pods *corev1.PodList, err error) {
 func GetPodIps(label string, namespace string) (instanceList map[string]string, err error) {
 
     var m = make(map[string]string)
+    i := 0
     pods := &corev1.PodList{}
 
     pods, err = GetPods(label, namespace)
@@ -72,12 +72,13 @@ func GetPodIps(label string, namespace string) (instanceList map[string]string, 
             m[pod.ObjectMeta.Name] = ""
         case "Running":
             m[pod.ObjectMeta.Name] = pod.Status.PodIP
+            i++
         case "Failed","Unknown":
             m[pod.ObjectMeta.Name] = "error"
         }
 
     }
-    log.Debugf("GetPodIps found: %v", len(instanceList))
+    log.Debugf("GetPodIps found: %v", i)
     return m, err
 }
 
@@ -96,8 +97,8 @@ func DeletePod(podName string, namespace string) (err error) {
     }
 }
 
-func GetSecret(secretName, string, secretKey string, namespace string) (secretValue string) {
-
+func GetSecret(secretName string, secretKey string, namespace string) (secretValue string) {
+    log.Debugf("GetSecret: %v/%v:%v", namespace,secretName,secretKey)
     clientset, err := getClient()
     secret, err := clientset.CoreV1().Secrets(namespace).Get(secretName, metav1.GetOptions{})
     if err != nil {
@@ -107,24 +108,29 @@ func GetSecret(secretName, string, secretKey string, namespace string) (secretVa
 
     for name, data := range secret.Data {
         if name == secretKey {
-            s := fmt.Sprint(data)
-            secretValue = strings.TrimSpace(s)
-            log.Infof("Found secret: %s", name)
+            str := string(data[:])
+            secretValue = strings.TrimSpace(str)
+            log.Debugf("Found secret: %s", name)
         } else {
             secretValue = ""
         }
     }
     if len(secretValue) > 0 {
-        log.Debugf("GetSecret found for %v", secretName)
+        log.Infof("GetSecret found for %v", secretName)
     } else {
-        log.Debugf("GetSecret not found for %v", secretName)
+        log.Infof("GetSecret not found for %v", secretName)
     }
     return secretValue
 }
 
 func PutSecret(secretName string, secretKey string, secretValue string, namespace string) (err error) {
 
-    secretValue = base64.StdEncoding.EncodeToString([]byte(secretValue))
+    //If Decode fails assume it's already Base64
+    _, err = base64.StdEncoding.DecodeString(secretValue)
+    if err != nil {
+        secretValue = base64.StdEncoding.EncodeToString([]byte(secretValue))
+    }
+
     s := map[string]string{
         secretKey: secretValue,
     }
@@ -164,7 +170,7 @@ func PutSecret(secretName string, secretKey string, secretValue string, namespac
         if err != nil {
         	log.Errorf("Error formatting patch %v:%v", patchData, err.Error())
         }
-        log.Debugf("Patching secretData: %v, %v, %v", secretName, types.JSONPatchType, patchBytes)
+        log.Debugf("Patching secretData: %v, %v, %v", secretName, types.JSONPatchType, secretValue)
         _, err = clientset.CoreV1().Secrets(namespace).Patch(secretName, types.JSONPatchType, patchBytes)
         if err != nil {
         	log.Errorf("Error Patching secret %v: %v", secretName, err.Error())
