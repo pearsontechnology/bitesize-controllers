@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	vaultpolicy_v1 "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vaultpolicy/v1"
+	vaultpolicy_v1 "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vault.local/v1"
 	versioned "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/client/informers/externalversions/internalinterfaces"
 	v1 "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/client/listers/vaultpolicy/v1"
@@ -48,10 +48,10 @@ func NewPolicyInformer(client versioned.Interface, resyncPeriod time.Duration, i
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
-				return client.VaultpolicyV1().Policies().List(options)
+				return client.VaultPolicyV1().Policies().List(options)
 			},
 			WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
-				return client.VaultpolicyV1().Policies().Watch(options)
+				return client.VaultPolicyV1().Policies().Watch(options)
 			},
 		},
 		&vaultpolicy_v1.Policy{},

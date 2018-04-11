@@ -16,7 +16,7 @@ limitations under the License.
 package fake
 
 import (
-	vaultpolicy_v1 "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vaultpolicy/v1"
+	vaultpolicy_v1 "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vault.local/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -27,7 +27,7 @@ import (
 
 // FakePolicies implements PolicyInterface
 type FakePolicies struct {
-	Fake *FakeVaultpolicyV1
+	Fake *FakeVaultPolicyV1
 }
 
 var policiesResource = schema.GroupVersionResource{Group: "vaultpolicy", Version: "v1", Resource: "policies"}

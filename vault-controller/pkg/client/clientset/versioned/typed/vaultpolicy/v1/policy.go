@@ -16,7 +16,7 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vaultpolicy/v1"
+	v1 "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vault.local/v1"
 	scheme "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/client/clientset/versioned/scheme"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -49,7 +49,7 @@ type policies struct {
 }
 
 // newPolicies returns a Policies
-func newPolicies(c *VaultpolicyV1Client) *policies {
+func newPolicies(c *VaultPolicyV1Client) *policies {
 	return &policies{
 		client: c.RESTClient(),
 	}

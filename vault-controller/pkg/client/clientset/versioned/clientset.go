@@ -25,26 +25,26 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	VaultpolicyV1() vaultpolicyv1.VaultpolicyV1Interface
+	VaultPolicyV1() vaultpolicyv1.VaultPolicyV1Interface
 	// Deprecated: please explicitly pick a version if possible.
-	Vaultpolicy() vaultpolicyv1.VaultpolicyV1Interface
+	Vaultpolicy() vaultpolicyv1.VaultPolicyV1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	vaultpolicyV1 *vaultpolicyv1.VaultpolicyV1Client
+	vaultpolicyV1 *vaultpolicyv1.VaultPolicyV1Client
 }
 
-// VaultpolicyV1 retrieves the VaultpolicyV1Client
-func (c *Clientset) VaultpolicyV1() vaultpolicyv1.VaultpolicyV1Interface {
+// VaultPolicyV1 retrieves the VaultPolicyV1Client
+func (c *Clientset) VaultPolicyV1() vaultpolicyv1.VaultPolicyV1Interface {
 	return c.vaultpolicyV1
 }
 
 // Deprecated: Vaultpolicy retrieves the default version of VaultpolicyClient.
 // Please explicitly pick a version.
-func (c *Clientset) Vaultpolicy() vaultpolicyv1.VaultpolicyV1Interface {
+func (c *Clientset) Vaultpolicy() vaultpolicyv1.VaultPolicyV1Interface {
 	return c.vaultpolicyV1
 }
 

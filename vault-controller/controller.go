@@ -125,7 +125,10 @@ func startCRD(vaultAddress string, vaultToken string) {
         go func() {
             for _ = range crdTicker.C {
                 log.Debugf("crdTicker fired...")
-                list, _ := clientset.VaultpolicyV1().Policies().List(metav1.ListOptions{})
+                list, err := clientset.VaultPolicyV1().Policies().List(metav1.ListOptions{})
+                if err !=nil {
+                    log.Errorf("Error listing vaultpolicies: %v", err.Error())
+                }
                 for _, policy := range list.Items {
                     log.Debugf("Policy %s found\n", policy.Name)
                     token, err := crdVaultClient.CreatePolicy(policy)

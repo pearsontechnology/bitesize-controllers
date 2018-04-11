@@ -5,7 +5,7 @@ import (
     "errors"
     "time"
     vault "github.com/hashicorp/vault/api"
-    vaultpolicy "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vaultpolicy/v1"
+    vaultpolicy "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vault.local/v1"
     log "github.com/Sirupsen/logrus"
 )
 

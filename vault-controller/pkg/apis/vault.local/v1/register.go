@@ -5,7 +5,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	vaultpolicy "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vaultpolicy"
+	vaultpolicy "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vault.local"
 )
 
 // SchemeGroupVersion is group version used to register these objects

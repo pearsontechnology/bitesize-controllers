@@ -21,17 +21,17 @@ import (
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeVaultpolicyV1 struct {
+type FakeVaultPolicyV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeVaultpolicyV1) Policies() v1.PolicyInterface {
+func (c *FakeVaultPolicyV1) Policies() v1.PolicyInterface {
 	return &FakePolicies{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeVaultpolicyV1) RESTClient() rest.Interface {
+func (c *FakeVaultPolicyV1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

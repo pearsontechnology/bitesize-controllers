@@ -59,12 +59,12 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// VaultpolicyV1 retrieves the VaultpolicyV1Client
-func (c *Clientset) VaultpolicyV1() vaultpolicyv1.VaultpolicyV1Interface {
-	return &fakevaultpolicyv1.FakeVaultpolicyV1{Fake: &c.Fake}
+// VaultPolicyV1 retrieves the VaultPolicyV1Client
+func (c *Clientset) VaultPolicyV1() vaultpolicyv1.VaultPolicyV1Interface {
+	return &fakevaultpolicyv1.FakeVaultPolicyV1{Fake: &c.Fake}
 }
 
-// Vaultpolicy retrieves the VaultpolicyV1Client
-func (c *Clientset) Vaultpolicy() vaultpolicyv1.VaultpolicyV1Interface {
-	return &fakevaultpolicyv1.FakeVaultpolicyV1{Fake: &c.Fake}
+// Vaultpolicy retrieves the VaultPolicyV1Client
+func (c *Clientset) Vaultpolicy() vaultpolicyv1.VaultPolicyV1Interface {
+	return &fakevaultpolicyv1.FakeVaultPolicyV1{Fake: &c.Fake}
 }

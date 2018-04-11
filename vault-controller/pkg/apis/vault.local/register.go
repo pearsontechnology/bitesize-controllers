@@ -1,5 +1,5 @@
 package vaultpolicy
 
 const (
-	GroupName = "vaultpolicy"
+	GroupName = "vault.local"
 )
