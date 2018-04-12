@@ -30,44 +30,44 @@ import (
 	time "time"
 )
 
-// PolicyInformer provides access to a shared informer and lister for
-// Policies.
-type PolicyInformer interface {
+// VaultPolicyInformer provides access to a shared informer and lister for
+// VaultPolicies.
+type VaultPolicyInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.PolicyLister
+	Lister() v1.VaultPolicyLister
 }
 
-type policyInformer struct {
+type vaultpolicyInformer struct {
 	factory internalinterfaces.SharedInformerFactory
 }
 
-// NewPolicyInformer constructs a new informer for Policy type.
+// NewVaultPolicyInformer constructs a new informer for VaultPolicy type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewPolicyInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+func NewVaultPolicyInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
-				return client.VaultPolicyV1().Policies().List(options)
+				return client.VaultPolicyV1().VaultPolicies().List(options)
 			},
 			WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
-				return client.VaultPolicyV1().Policies().Watch(options)
+				return client.VaultPolicyV1().VaultPolicies().Watch(options)
 			},
 		},
-		&vaultpolicy_v1.Policy{},
+		&vaultpolicy_v1.VaultPolicy{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func defaultPolicyInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewPolicyInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+func defaultVaultPolicyInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewVaultPolicyInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 }
 
 func (f *policyInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&vaultpolicy_v1.Policy{}, defaultPolicyInformer)
+	return f.factory.InformerFor(&vaultpolicy_v1.VaultPolicy{}, defaultVaultPolicyInformer)
 }
 
-func (f *policyInformer) Lister() v1.PolicyLister {
+func (f *policyInformer) Lister() v1.VaultPolicyLister {
 	return v1.NewPolicyLister(f.Informer().GetIndexer())
 }

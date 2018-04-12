@@ -15,4 +15,4 @@ limitations under the License.
 */
 package v1
 
-type PolicyExpansion interface{}
+type VaultPolicyExpansion interface{}

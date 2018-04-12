@@ -24,42 +24,42 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-// PoliciesGetter has a method to return a PolicyInterface.
+// VaultPoliciesGetter has a method to return a VaultPolicyInterface.
 // A group's client should implement this interface.
-type PoliciesGetter interface {
-	Policies() PolicyInterface
+type VaultPoliciesGetter interface {
+	VaultPolicies() VaultPolicyInterface
 }
 
-// PolicyInterface has methods to work with Policy resources.
-type PolicyInterface interface {
-	Create(*v1.Policy) (*v1.Policy, error)
-	Update(*v1.Policy) (*v1.Policy, error)
+// VaultPolicyInterface has methods to work with VaultPolicy resources.
+type VaultPolicyInterface interface {
+	Create(*v1.VaultPolicy) (*v1.VaultPolicy, error)
+	Update(*v1.VaultPolicy) (*v1.VaultPolicy, error)
 	Delete(name string, options *meta_v1.DeleteOptions) error
 	DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error
-	Get(name string, options meta_v1.GetOptions) (*v1.Policy, error)
-	List(opts meta_v1.ListOptions) (*v1.PolicyList, error)
+	Get(name string, options meta_v1.GetOptions) (*v1.VaultPolicy, error)
+	List(opts meta_v1.ListOptions) (*v1.VaultPolicyList, error)
 	Watch(opts meta_v1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Policy, err error)
-	PolicyExpansion
+	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.VaultPolicy, err error)
+	VaultPolicyExpansion
 }
 
-// policies implements PolicyInterface
-type policies struct {
+// vaultpolicies implements VaultPolicyInterface
+type vaultpolicies struct {
 	client rest.Interface
 }
 
-// newPolicies returns a Policies
-func newPolicies(c *VaultPolicyV1Client) *policies {
-	return &policies{
+// newVaultPolicies returns a VaultPolicies
+func newVaultPolicies(c *VaultPolicyV1Client) *vaultpolicies {
+	return &vaultpolicies{
 		client: c.RESTClient(),
 	}
 }
 
-// Get takes name of the policy, and returns the corresponding policy object, and an error if there is any.
-func (c *policies) Get(name string, options meta_v1.GetOptions) (result *v1.Policy, err error) {
-	result = &v1.Policy{}
+// Get takes name of the vaultpolicy, and returns the corresponding vaultpolicy object, and an error if there is any.
+func (c *vaultpolicies) Get(name string, options meta_v1.GetOptions) (result *v1.VaultPolicy, err error) {
+	result = &v1.VaultPolicy{}
 	err = c.client.Get().
-		Resource("policies").
+		Resource("vaultpolicies").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
@@ -67,53 +67,53 @@ func (c *policies) Get(name string, options meta_v1.GetOptions) (result *v1.Poli
 	return
 }
 
-// List takes label and field selectors, and returns the list of Policies that match those selectors.
-func (c *policies) List(opts meta_v1.ListOptions) (result *v1.PolicyList, err error) {
-	result = &v1.PolicyList{}
+// List takes label and field selectors, and returns the list of VaultPolicies that match those selectors.
+func (c *vaultpolicies) List(opts meta_v1.ListOptions) (result *v1.VaultPolicyList, err error) {
+	result = &v1.VaultPolicyList{}
 	err = c.client.Get().
-		Resource("policies").
+		Resource("vaultpolicies").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do().
 		Into(result)
 	return
 }
 
-// Watch returns a watch.Interface that watches the requested policies.
-func (c *policies) Watch(opts meta_v1.ListOptions) (watch.Interface, error) {
+// Watch returns a watch.Interface that watches the requested vaultpolicies.
+func (c *vaultpolicies) Watch(opts meta_v1.ListOptions) (watch.Interface, error) {
 	opts.Watch = true
 	return c.client.Get().
-		Resource("policies").
+		Resource("vaultpolicies").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Watch()
 }
 
-// Create takes the representation of a policy and creates it.  Returns the server's representation of the policy, and an error, if there is any.
-func (c *policies) Create(policy *v1.Policy) (result *v1.Policy, err error) {
-	result = &v1.Policy{}
+// Create takes the representation of a vaultpolicy and creates it.  Returns the server's representation of the vaultpolicy, and an error, if there is any.
+func (c *vaultpolicies) Create(vaultpolicy *v1.VaultPolicy) (result *v1.VaultPolicy, err error) {
+	result = &v1.VaultPolicy{}
 	err = c.client.Post().
-		Resource("policies").
-		Body(policy).
+		Resource("vaultpolicies").
+		Body(vaultpolicy).
 		Do().
 		Into(result)
 	return
 }
 
-// Update takes the representation of a policy and updates it. Returns the server's representation of the policy, and an error, if there is any.
-func (c *policies) Update(policy *v1.Policy) (result *v1.Policy, err error) {
-	result = &v1.Policy{}
+// Update takes the representation of a vaultpolicy and updates it. Returns the server's representation of the vaultpolicy, and an error, if there is any.
+func (c *vaultpolicies) Update(vaultpolicy *v1.VaultPolicy) (result *v1.VaultPolicy, err error) {
+	result = &v1.VaultPolicy{}
 	err = c.client.Put().
-		Resource("policies").
-		Name(policy.Name).
-		Body(policy).
+		Resource("vaultpolicies").
+		Name(vaultpolicy.Name).
+		Body(vaultpolicy).
 		Do().
 		Into(result)
 	return
 }
 
-// Delete takes name of the policy and deletes it. Returns an error if one occurs.
-func (c *policies) Delete(name string, options *meta_v1.DeleteOptions) error {
+// Delete takes name of the vaultpolicy and deletes it. Returns an error if one occurs.
+func (c *vaultpolicies) Delete(name string, options *meta_v1.DeleteOptions) error {
 	return c.client.Delete().
-		Resource("policies").
+		Resource("vaultpolicies").
 		Name(name).
 		Body(options).
 		Do().
@@ -121,20 +121,20 @@ func (c *policies) Delete(name string, options *meta_v1.DeleteOptions) error {
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *policies) DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error {
+func (c *vaultpolicies) DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error {
 	return c.client.Delete().
-		Resource("policies").
+		Resource("vaultpolicies").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Body(options).
 		Do().
 		Error()
 }
 
-// Patch applies the patch and returns the patched policy.
-func (c *policies) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Policy, err error) {
-	result = &v1.Policy{}
+// Patch applies the patch and returns the patched vaultpolicy.
+func (c *vaultpolicies) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.VaultPolicy, err error) {
+	result = &v1.VaultPolicy{}
 	err = c.client.Patch(pt).
-		Resource("policies").
+		Resource("vaultpolicies").
 		SubResource(subresources...).
 		Name(name).
 		Body(data).

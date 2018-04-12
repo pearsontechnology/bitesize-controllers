@@ -26,42 +26,42 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// PolicyLister helps list Policies.
-type PolicyLister interface {
-	// List lists all Policies in the indexer.
-	List(selector labels.Selector) (ret []*v1.Policy, err error)
-	// Get retrieves the Policy from the index for a given name.
-	Get(name string) (*v1.Policy, error)
-	PolicyListerExpansion
+// VaultPolicyLister helps list VaultPolicies.
+type VaultPolicyLister interface {
+	// List lists all VaultPolicies in the indexer.
+	List(selector labels.Selector) (ret []*v1.VaultPolicy, err error)
+	// Get retrieves the VaultPolicy from the index for a given name.
+	Get(name string) (*v1.VaultPolicy, error)
+	VaultPolicyListerExpansion
 }
 
-// policyLister implements the PolicyLister interface.
-type policyLister struct {
+// vaultpolicyLister implements the VaultPolicyLister interface.
+type vaultpolicyLister struct {
 	indexer cache.Indexer
 }
 
-// NewPolicyLister returns a new PolicyLister.
-func NewPolicyLister(indexer cache.Indexer) PolicyLister {
-	return &policyLister{indexer: indexer}
+// NewVaultPolicyLister returns a new VaultPolicyLister.
+func NewVaultPolicyLister(indexer cache.Indexer) VaultPolicyLister {
+	return &vaultpolicyLister{indexer: indexer}
 }
 
-// List lists all Policies in the indexer.
-func (s *policyLister) List(selector labels.Selector) (ret []*v1.Policy, err error) {
+// List lists all VaultPolicies in the indexer.
+func (s *vaultpolicyLister) List(selector labels.Selector) (ret []*v1.VaultPolicy, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.Policy))
+		ret = append(ret, m.(*v1.VaultPolicy))
 	})
 	return ret, err
 }
 
-// Get retrieves the Policy from the index for a given name.
-func (s *policyLister) Get(name string) (*v1.Policy, error) {
-	key := &v1.Policy{ObjectMeta: meta_v1.ObjectMeta{Name: name}}
+// Get retrieves the VaultPolicy from the index for a given name.
+func (s *vaultpolicyLister) Get(name string) (*v1.VaultPolicy, error) {
+	key := &v1.VaultPolicy{ObjectMeta: meta_v1.ObjectMeta{Name: name}}
 	obj, exists, err := s.indexer.Get(key)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("policy"), name)
+		return nil, errors.NewNotFound(v1.Resource("vaultpolicy"), name)
 	}
-	return obj.(*v1.Policy), nil
+	return obj.(*v1.VaultPolicy), nil
 }

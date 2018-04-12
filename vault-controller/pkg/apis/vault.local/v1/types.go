@@ -8,21 +8,21 @@ import (
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type Policy struct {
+type VaultPolicy struct {
     metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec               []PolicySpec `json:"spec"`
+	Spec               []VaultPolicySpec `json:"spec"`
 }
 
-type PolicySpec struct {
+type VaultPolicySpec struct {
     Path       string `json:"path"`
 	Permission string `json:"permission"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type PolicyList struct {
+type VaultPolicyList struct {
     metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
-	Items            []Policy `json:"items"`
+	Items            []VaultPolicy `json:"items"`
 }

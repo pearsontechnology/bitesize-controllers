@@ -122,7 +122,7 @@ func (c *VaultClient) LeaderStatus() (leaderState bool, err error) {
 }
 
 // CRUD Policy functions
-func (c *VaultClient) CreatePolicy(policy vaultpolicy.Policy) (token string, err error) {
+func (c *VaultClient) CreatePolicy(policy vaultpolicy.VaultPolicy) (token string, err error) {
     log.Debugf("CreatePolicy: %v", policy)
 
     p, err := c.Client.Sys().GetPolicy(policy.Name)

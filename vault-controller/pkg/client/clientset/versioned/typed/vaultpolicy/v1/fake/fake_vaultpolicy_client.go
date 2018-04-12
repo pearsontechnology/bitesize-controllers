@@ -25,8 +25,8 @@ type FakeVaultPolicyV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeVaultPolicyV1) Policies() v1.PolicyInterface {
-	return &FakePolicies{c}
+func (c *FakeVaultPolicyV1) VaultPolicies() v1.VaultPolicyInterface {
+	return &FakeVaultPolicies{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

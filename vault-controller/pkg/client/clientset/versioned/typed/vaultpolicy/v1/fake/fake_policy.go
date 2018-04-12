@@ -25,29 +25,29 @@ import (
 	testing "k8s.io/client-go/testing"
 )
 
-// FakePolicies implements PolicyInterface
-type FakePolicies struct {
+// FakeVaultPolicies implements VaultPolicyInterface
+type FakeVaultPolicies struct {
 	Fake *FakeVaultPolicyV1
 }
 
-var policiesResource = schema.GroupVersionResource{Group: "vaultpolicy", Version: "v1", Resource: "policies"}
+var vaultpoliciesResource = schema.GroupVersionResource{Group: "vaultpolicy", Version: "v1", Resource: "policies"}
 
-var policiesKind = schema.GroupVersionKind{Group: "vaultpolicy", Version: "v1", Kind: "Policy"}
+var vaultpoliciesKind = schema.GroupVersionKind{Group: "vaultpolicy", Version: "v1", Kind: "Policy"}
 
-// Get takes name of the policy, and returns the corresponding policy object, and an error if there is any.
-func (c *FakePolicies) Get(name string, options v1.GetOptions) (result *vaultpolicy_v1.Policy, err error) {
+// Get takes name of the vaultpolicy, and returns the corresponding vaultpolicy object, and an error if there is any.
+func (c *FakeVaultPolicies) Get(name string, options v1.GetOptions) (result *vaultpolicy_v1.VaultPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(policiesResource, name), &vaultpolicy_v1.Policy{})
+		Invokes(testing.NewRootGetAction(vaultpoliciesResource, name), &vaultpolicy_v1.VaultPolicy{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*vaultpolicy_v1.Policy), err
+	return obj.(*vaultpolicy_v1.VaultPolicy), err
 }
 
-// List takes label and field selectors, and returns the list of Policies that match those selectors.
-func (c *FakePolicies) List(opts v1.ListOptions) (result *vaultpolicy_v1.PolicyList, err error) {
+// List takes label and field selectors, and returns the list of VaultPolicies that match those selectors.
+func (c *FakeVaultPolicies) List(opts v1.ListOptions) (result *vaultpolicy_v1.VaultPolicyList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(policiesResource, policiesKind, opts), &vaultpolicy_v1.PolicyList{})
+		Invokes(testing.NewRootListAction(vaultpoliciesResource, vaultpoliciesKind, opts), &vaultpolicy_v1.VaultPolicyList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -56,8 +56,8 @@ func (c *FakePolicies) List(opts v1.ListOptions) (result *vaultpolicy_v1.PolicyL
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &vaultpolicy_v1.PolicyList{}
-	for _, item := range obj.(*vaultpolicy_v1.PolicyList).Items {
+	list := &vaultpolicy_v1.VaultPolicyList{}
+	for _, item := range obj.(*vaultpolicy_v1.VaultPolicyList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -65,53 +65,53 @@ func (c *FakePolicies) List(opts v1.ListOptions) (result *vaultpolicy_v1.PolicyL
 	return list, err
 }
 
-// Watch returns a watch.Interface that watches the requested policies.
-func (c *FakePolicies) Watch(opts v1.ListOptions) (watch.Interface, error) {
+// Watch returns a watch.Interface that watches the requested vaultpolicies.
+func (c *FakeVaultPolicies) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(policiesResource, opts))
+		InvokesWatch(testing.NewRootWatchAction(vaultpoliciesResource, opts))
 }
 
-// Create takes the representation of a policy and creates it.  Returns the server's representation of the policy, and an error, if there is any.
-func (c *FakePolicies) Create(policy *vaultpolicy_v1.Policy) (result *vaultpolicy_v1.Policy, err error) {
+// Create takes the representation of a vaultpolicy and creates it.  Returns the server's representation of the vaultpolicy, and an error, if there is any.
+func (c *FakeVaultPolicies) Create(vaultpolicy *vaultpolicy_v1.VaultPolicy) (result *vaultpolicy_v1.VaultPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(policiesResource, policy), &vaultpolicy_v1.Policy{})
+		Invokes(testing.NewRootCreateAction(vaultpoliciesResource, vaultpolicy), &vaultpolicy_v1.VaultPolicy{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*vaultpolicy_v1.Policy), err
+	return obj.(*vaultpolicy_v1.VaultPolicy), err
 }
 
-// Update takes the representation of a policy and updates it. Returns the server's representation of the policy, and an error, if there is any.
-func (c *FakePolicies) Update(policy *vaultpolicy_v1.Policy) (result *vaultpolicy_v1.Policy, err error) {
+// Update takes the representation of a vaultpolicy and updates it. Returns the server's representation of the vaultpolicy, and an error, if there is any.
+func (c *FakeVaultPolicies) Update(vaultpolicy *vaultpolicy_v1.VaultPolicy) (result *vaultpolicy_v1.VaultPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(policiesResource, policy), &vaultpolicy_v1.Policy{})
+		Invokes(testing.NewRootUpdateAction(vaultpoliciesResource, vaultpolicy), &vaultpolicy_v1.VaultPolicy{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*vaultpolicy_v1.Policy), err
+	return obj.(*vaultpolicy_v1.VaultPolicy), err
 }
 
-// Delete takes name of the policy and deletes it. Returns an error if one occurs.
-func (c *FakePolicies) Delete(name string, options *v1.DeleteOptions) error {
+// Delete takes name of the vaultpolicy and deletes it. Returns an error if one occurs.
+func (c *FakeVaultPolicies) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(policiesResource, name), &vaultpolicy_v1.Policy{})
+		Invokes(testing.NewRootDeleteAction(vaultpoliciesResource, name), &vaultpolicy_v1.VaultPolicy{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakePolicies) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(policiesResource, listOptions)
+func (c *FakeVaultPolicies) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+	action := testing.NewRootDeleteCollectionAction(vaultpoliciesResource, listOptions)
 
-	_, err := c.Fake.Invokes(action, &vaultpolicy_v1.PolicyList{})
+	_, err := c.Fake.Invokes(action, &vaultpolicy_v1.VaultPolicyList{})
 	return err
 }
 
-// Patch applies the patch and returns the patched policy.
-func (c *FakePolicies) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *vaultpolicy_v1.Policy, err error) {
+// Patch applies the patch and returns the patched vaultpolicy.
+func (c *FakeVaultPolicies) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *vaultpolicy_v1.VaultPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(policiesResource, name, data, subresources...), &vaultpolicy_v1.Policy{})
+		Invokes(testing.NewRootPatchSubresourceAction(vaultpoliciesResource, name, data, subresources...), &vaultpolicy_v1.VaultPolicy{})
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*vaultpolicy_v1.Policy), err
+	return obj.(*vaultpolicy_v1.VaultPolicy), err
 }

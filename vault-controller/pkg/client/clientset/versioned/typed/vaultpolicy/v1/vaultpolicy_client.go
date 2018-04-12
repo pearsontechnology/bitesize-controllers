@@ -24,7 +24,7 @@ import (
 
 type VaultPolicyV1Interface interface {
 	RESTClient() rest.Interface
-	PoliciesGetter
+	VaultPoliciesGetter
 }
 
 // VaultPolicyV1Client is used to interact with features provided by the vaultpolicy group.
@@ -32,8 +32,8 @@ type VaultPolicyV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *VaultPolicyV1Client) Policies() PolicyInterface {
-	return newPolicies(c)
+func (c *VaultPolicyV1Client) VaultPolicies() VaultPolicyInterface {
+	return newVaultPolicies(c)
 }
 
 // NewForConfig creates a new VaultPolicyV1Client for the given config.

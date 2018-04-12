@@ -18,6 +18,6 @@ limitations under the License.
 
 package v1
 
-// PolicyListerExpansion allows custom methods to be added to
-// PolicyLister.
-type PolicyListerExpansion interface{}
+// VaultPolicyListerExpansion allows custom methods to be added to
+// VaultPolicyLister.
+type VaultPolicyListerExpansion interface{}
