@@ -112,7 +112,7 @@ func startCRD(vaultAddress string, vaultToken string) {
             log.Errorf("InClusterConfig error: %v", err.Error())
         }
         // Create CRD and client
-        log.Infof("Creating CRD")
+        log.Infof("Starting VaultPolicy monitor...")
         clientset, err := vaultcs.NewForConfig(config)
         if err != nil {
             log.Errorf("vaultcs client error: %v", err.Error())
@@ -130,10 +130,13 @@ func startCRD(vaultAddress string, vaultToken string) {
                     log.Errorf("Error listing vaultpolicies: %v", err.Error())
                 }
                 for _, policy := range list.Items {
-                    log.Debugf("Policy %s found\n", policy.Name)
+                    log.Debugf("VaultPolicy CRD object found: %v/%v", policy.Namespace, policy.Name)
                     token, err := crdVaultClient.CreatePolicy(policy)
-                    if err != nil && token != "" {
-                        log.Debugf("Policy %s token generated: %v\n", policy.Name, token)
+                    if err != nil {
+                        log.Errorf("Error creating policy %v: %v", policy.Name, err.Error())
+                    } else if err == nil && token != "" {
+                        log.Debugf("Policy %s token generated: %v", policy.Name, token)
+                        log.Debugf("Generating secret %v/%v:%v for token: %v", policy.Namespace, policy.Name, policy.Name, token)
                         k8s.PutSecret(policy.Name, policy.Name, token, policy.Namespace)
                     }
                 }
@@ -269,6 +272,21 @@ func main() {
                     log.Debugf("Vault client failed for: %v, %v", name, err.Error())
                     continue
                 }
+
+                sealState, err := vaultClient.SealStatus()
+                if err != nil {
+                    log.Errorf("ERROR: Seal state unknown: %v: %v", name, err.Error())
+                    //TODO handle errors
+                }
+                if sealState == true {
+                    log.Infof("Instance Sealed: %v", name)
+                    if unsealKeys != "" {
+                        sealState, err = vaultClient.Unseal(unsealKeys)
+                    }
+                    if err != nil {
+                        log.Errorf("Error unsealing: %v",  err.Error())
+                    }
+                }
                 initState, err := vaultClient.InitStatus()
                 if err != nil {
                     log.Errorf("ERROR: Init state unknown: %v: %v", name, err.Error())
@@ -286,21 +304,6 @@ func main() {
                     if err != nil {
                         log.Errorf("ERROR: init resturned error: %v", err.Error())
                         //TODO handle errors
-                    }
-                }
-
-                sealState, err := vaultClient.SealStatus()
-                if err != nil {
-                    log.Errorf("ERROR: Seal state unknown: %v: %v", name, err.Error())
-                    //TODO handle errors
-                }
-                if sealState == true {
-                    log.Infof("Instance Sealed: %v", name)
-                    if unsealKeys != "" {
-                        sealState, err = vaultClient.Unseal(unsealKeys)
-                    }
-                    if err != nil {
-                        log.Errorf("Error unsealing: %v",  err.Error())
                     }
                 }
 

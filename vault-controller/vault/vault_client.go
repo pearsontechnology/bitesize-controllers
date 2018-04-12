@@ -140,7 +140,7 @@ func (c *VaultClient) CreatePolicy(policy vaultpolicy.VaultPolicy) (token string
         log.Errorf("Error creating Policy %v", policy.Name)
         return "", err
     }
-    log.Debugf("CreatePolicy created policy: %v", policy.Name)
+    log.Infof("CreatePolicy created policy: %v", policy.Name)
     var policies []string
     policies = append(policies, policy.Name)
     opts := &vault.TokenCreateRequest{
@@ -148,7 +148,8 @@ func (c *VaultClient) CreatePolicy(policy vaultpolicy.VaultPolicy) (token string
         DisplayName: policy.Name,
 		Lease: "24h"}
 
-    log.Debugf("CreatePolicy creating token: %v", opts)
+    log.Infof("Creating token for policy: %v", policy.Name )
+    log.Debugf("CreatePolicy token opts: %v", opts)
 
     tokenData, err := c.Client.Auth().Token().Create(opts) //https://godoc.org/github.com/hashicorp/vault/api#TokenAuth.Create
     if err != nil {

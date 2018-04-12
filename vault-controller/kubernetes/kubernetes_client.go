@@ -4,7 +4,6 @@ import (
     "strings"
     "time"
     "encoding/json"
-    "encoding/base64"
     log "github.com/Sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -124,12 +123,6 @@ func GetSecret(secretName string, secretKey string, namespace string) (secretVal
 }
 
 func PutSecret(secretName string, secretKey string, secretValue string, namespace string) (err error) {
-
-    //If Decode fails assume it's already Base64
-    _, err = base64.StdEncoding.DecodeString(secretValue)
-    if err != nil {
-        secretValue = base64.StdEncoding.EncodeToString([]byte(secretValue))
-    }
 
     s := map[string]string{
         secretKey: secretValue,
