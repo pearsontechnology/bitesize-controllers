@@ -105,20 +105,16 @@ func GetSecret(secretName string, secretKey string, namespace string) (secretVal
         log.Errorf("Error retrieving secret %v: %v", secretName, err.Error())
         return ""
     }
-
+    secretValue = ""
     for name, data := range secret.Data {
         if name == secretKey {
             str := string(data[:])
             secretValue = strings.TrimSpace(str)
-            log.Debugf("Found secret: %s", name)
+            log.Infof("GetSecret found for %v", secretName)
+            log.Debugf("Found secret: %s", secretValue)
         } else {
-            secretValue = ""
+            log.Debugf("GetSecret not matched: %v", secretKey)
         }
-    }
-    if len(secretValue) > 0 {
-        log.Infof("GetSecret found for %v", secretName)
-    } else {
-        log.Infof("GetSecret not found for %v", secretName)
     }
     return secretValue
 }

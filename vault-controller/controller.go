@@ -71,7 +71,7 @@ func initInstance(c *vault.VaultClient, onKubernetes bool, shares int, threshold
         if len(strings.Split(s, ",")) >= threshold {
             log.Warnf("WARNING: Existing Unseal keys found in secret %v/%v:%v", vaultNamespace,unsealSecretName,unsealSecretKey )
             log.Debugf("Keys: %v", s)
-            return c, "", "", errors.New("Instance already inititialised")
+            return c, "", s, errors.New("Instance already inititialised")
         }
         token, keys, err = c.Init(shares, threshold)
         if err != nil {
