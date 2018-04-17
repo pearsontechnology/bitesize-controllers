@@ -42,7 +42,7 @@ func deletePod(name string, namespace string) {
     }
 }
 
-func initInstance(c *vault.VaultClient, onKubernetes bool, shares int, threshold int) (r *vault.VaultClient, unsealKeys string, err error) {
+func initInstance(c *vault.VaultClient, onKubernetes bool, shares int, threshold int) (r *vault.VaultClient, vaultToken string, unsealKeys string, err error) {
     var token string
     var keys []string
     instanceAddress := c.Client.Address()
@@ -71,12 +71,12 @@ func initInstance(c *vault.VaultClient, onKubernetes bool, shares int, threshold
         if len(strings.Split(s, ",")) >= threshold {
             log.Warnf("WARNING: Existing Unseal keys found in secret %v/%v:%v", vaultNamespace,unsealSecretName,unsealSecretKey )
             log.Debugf("Keys: %v", s)
-            return c, "", errors.New("Instance already inititialised")
+            return c, "", "", errors.New("Instance already inititialised")
         }
         token, keys, err = c.Init(shares, threshold)
         if err != nil {
             log.Errorf("Error Initialise failed: %v", err.Error())
-            return c, "", err
+            return c, "", "", err
         }
         var k string
         for _, v := range keys {
@@ -91,7 +91,7 @@ func initInstance(c *vault.VaultClient, onKubernetes bool, shares int, threshold
         token, keys, err = c.Init(shares, threshold)
         if err != nil {
             log.Errorf("Error Initialise failed: %v", err.Error())
-            return c, "", err
+            return c, "", "", err
         }
         var k string
         for _, v := range keys {
@@ -101,47 +101,51 @@ func initInstance(c *vault.VaultClient, onKubernetes bool, shares int, threshold
         log.Infof("Unseal Keys: %v", unsealKeys)
         log.Infof("Root token: %v", token)
     }
+    time.Sleep(5 * time.Second)
     r, err = vault.NewVaultClient(instanceAddress, token)
-    return r, unsealKeys, err
+    return r, token, unsealKeys, err
 }
 
-func startCRD(vaultAddress string, vaultToken string) {
+func startCRD(stopchan chan bool, vaultAddress string, vaultToken string) {
 
-        config, err := rest.InClusterConfig()
-        if err != nil {
-            log.Errorf("InClusterConfig error: %v", err.Error())
-        }
-        // Create CRD and client
-        log.Infof("Starting VaultPolicy monitor...")
-        clientset, err := vaultcs.NewForConfig(config)
-        if err != nil {
-            log.Errorf("vaultcs client error: %v", err.Error())
-        }
-
-        crdVaultClient, err := vault.NewVaultClient(vaultAddress, vaultToken)
-        t, _ := time.ParseDuration(crdRefreshInterval)
-        crdTicker := time.NewTicker(t)
-
-        go func() {
-            for _ = range crdTicker.C {
-                log.Debugf("crdTicker fired...")
-                list, err := clientset.VaultPolicyV1().VaultPolicies().List(metav1.ListOptions{})
-                if err !=nil {
-                    log.Errorf("Error listing vaultpolicies: %v", err.Error())
-                }
-                for _, policy := range list.Items {
-                    log.Debugf("VaultPolicy CRD object found: %v/%v", policy.Namespace, policy.Name)
-                    token, err := crdVaultClient.CreatePolicy(policy)
-                    if err != nil {
-                        log.Errorf("Error creating policy %v: %v", policy.Name, err.Error())
-                    } else if err == nil && token != "" {
-                        log.Debugf("Policy %s token generated: %v", policy.Name, token)
-                        log.Debugf("Generating secret %v/%v:%v for token: %v", policy.Namespace, policy.Name, policy.Name, token)
-                        k8s.PutSecret(policy.Name, policy.Name, token, policy.Namespace)
-                    }
+    config, err := rest.InClusterConfig()
+    if err != nil {
+        log.Errorf("InClusterConfig error: %v", err.Error())
+    }
+    // Create CRD and client
+    log.Infof("Starting VaultPolicy monitor...")
+    clientset, err := vaultcs.NewForConfig(config)
+    if err != nil {
+        log.Errorf("vaultcs client error: %v", err.Error())
+    }
+    crdVaultClient, err := vault.NewVaultClient(vaultAddress, vaultToken)
+    t, _ := time.ParseDuration(crdRefreshInterval)
+    crdTicker := time.NewTicker(t)
+    defer crdTicker.Stop()
+    for _ = range crdTicker.C {
+        select {
+        case <- stopchan:
+            log.Debugf("startCRD stop...")
+            return
+        default:
+            log.Debugf("crdTicker fired...")
+            list, err := clientset.VaultPolicyV1().VaultPolicies().List(metav1.ListOptions{})
+            if err !=nil {
+                log.Errorf("Error listing vaultpolicies: %v", err.Error())
+            }
+            for _, policy := range list.Items {
+                log.Debugf("VaultPolicy CRD object found: %v/%v", policy.Namespace, policy.Name)
+                token, err := crdVaultClient.CreatePolicy(policy)
+                if err != nil {
+                    log.Errorf("Error creating policy %v: %v", policy.Name, err.Error())
+                } else if err == nil && token != "" {
+                    log.Debugf("Policy %s token generated: %v", policy.Name, token)
+                    log.Debugf("Generating secret %v/%v:%v for token: %v", policy.Namespace, policy.Name, policy.Name, token)
+                    k8s.PutSecret(policy.Name, policy.Name, token, policy.Namespace)
                 }
             }
-        }()
+        }
+    }
 }
 
 func main() {
@@ -221,7 +225,9 @@ func main() {
         log.Errorf("Invalid value for env var VAULT_UNSEAL_KEYS: %v", unsealKeys)
     }
 
-    go startCRD(vaultAddress, vaultToken)
+    crdStopChan := make(chan bool)
+
+    go startCRD(crdStopChan, vaultAddress, vaultToken)
 
     // Controller loop
     for {
@@ -300,7 +306,11 @@ func main() {
                     log.Debugf("Instance initialised: %v", name)
                 } else if initState == false {
                     log.Infof("Instance NOT initialised: %v", name)
-                    vaultClient, unsealKeys, err = initInstance(vaultClient, onKubernetes, vaultInitShares, vaultInitThreshold)
+                    vaultClient, vaultToken, unsealKeys, err = initInstance(vaultClient, onKubernetes, vaultInitShares, vaultInitThreshold)
+                    vaultClient.Unseal(unsealKeys)
+                    close(crdStopChan)
+                    crdStopChan = make(chan bool)
+                    go startCRD(crdStopChan, vaultAddress, vaultToken)
                     if err != nil {
                         log.Errorf("ERROR: init resturned error: %v", err.Error())
                         //TODO handle errors

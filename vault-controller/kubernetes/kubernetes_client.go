@@ -88,7 +88,7 @@ func DeletePod(podName string, namespace string) (err error) {
     log.Debugf("Deleting pod: %v", podName)
     //options := metav1.DeleteOptions{}
     err = clientset.CoreV1().Pods(namespace).Delete(podName, nil)
-    time.Sleep(60 * time.Second)
+    time.Sleep(30 * time.Second)
     if err != nil {
         log.Errorf("Error deleting pod %v: %v", podName, err.Error())
         return err
