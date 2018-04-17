@@ -4,9 +4,10 @@ import (
     "strings"
     "time"
     "encoding/json"
+    "encoding/base64"
     log "github.com/Sirupsen/logrus"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    corev1 "k8s.io/api/core/v1"
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/apimachinery/pkg/types"
     "k8s.io/client-go/kubernetes"
     "k8s.io/client-go/rest"
@@ -19,9 +20,9 @@ type PatchSpec struct {
 }
 
 func listOptions(value string) metav1.ListOptions {
-	return metav1.ListOptions{
-		LabelSelector: "name=" + value,
-	}
+    return metav1.ListOptions{
+        LabelSelector: "name=" + value,
+    }
 }
 
 func getClient()(*kubernetes.Clientset, error) {
@@ -124,35 +125,41 @@ func GetSecret(secretName string, secretKey string, namespace string) (secretVal
 
 func PutSecret(secretName string, secretKey string, secretValue string, namespace string) (err error) {
 
+    //If Decode fails assume it's already Base64
+    _, err = base64.StdEncoding.DecodeString(secretValue)
+    if err != nil {
+        secretValue = base64.StdEncoding.EncodeToString([]byte(secretValue))
+    }
+
     s := map[string]string{
         secretKey: secretValue,
     }
 
     secretData := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: namespace,
-		},
-		StringData: s,
-	}
+        ObjectMeta: metav1.ObjectMeta{
+            Name:      secretName,
+            Namespace: namespace,
+        },
+        StringData: s,
+    }
 
     clientset, err := getClient()
 
     secrets, err := clientset.CoreV1().Secrets(namespace).List(metav1.ListOptions{})
-	if err != nil {
-		log.Errorf("Error retrieving secrets %v:", err.Error())
-	}
-	found := false
-	for _, sec := range secrets.Items {
-		if sec.ObjectMeta.Name == secretName {
-			found = true
-		}
-	}
+    if err != nil {
+        log.Errorf("Error retrieving secrets %v:", err.Error())
+    }
+    found := false
+    for _, sec := range secrets.Items {
+        if sec.ObjectMeta.Name == secretName {
+            found = true
+        }
+    }
     if found == false {
         log.Debugf("Creating secretData: %v", secretData)
         _, err := clientset.CoreV1().Secrets(namespace).Create(secretData)
         if err != nil {
-        	log.Errorf("Error Creating secret %v:%v", secretName, err.Error())
+            log.Errorf("Error Creating secret %v:%v", secretName, err.Error())
         }
     } else {
         patchData := make([]PatchSpec, 1)
@@ -161,12 +168,12 @@ func PutSecret(secretName string, secretKey string, secretValue string, namespac
         patchData[0].Value = secretValue
         patchBytes, err := json.Marshal(patchData)
         if err != nil {
-        	log.Errorf("Error formatting patch %v:%v", patchData, err.Error())
+            log.Errorf("Error formatting patch %v:%v", patchData, err.Error())
         }
         log.Debugf("Patching secretData: %v, %v, %v", secretName, types.JSONPatchType, secretValue)
         _, err = clientset.CoreV1().Secrets(namespace).Patch(secretName, types.JSONPatchType, patchBytes)
         if err != nil {
-        	log.Errorf("Error Patching secret %v: %v", secretName, err.Error())
+            log.Errorf("Error Patching secret %v: %v", secretName, err.Error())
         }
     }
 
