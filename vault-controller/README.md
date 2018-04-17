@@ -1,47 +1,49 @@
 # vault-controller
-Image for Bitesize vault controller
+## Image for Bitesize vault controller
 
 If you align to the defaults then in most cases the controller will work without providing any explicit vars.
 
 It will:
 
-Discover Vault pods on your cluster.
-Ascertain their init status and initialise them if necessary.
-Ascertain their Seal status and unseal them if necessary.
-It uses Kubernetes(k8s) secrets to store Unseal keys and tokens when it creates them and to read them when required.
+- Discover Vault pods on your cluster.
+- Ascertain their init status and initialise them if necessary.
+- Ascertain their Seal status and unseal them if necessary.
+- It uses Kubernetes(k8s) secrets to store Unseal keys and tokens when it creates them and to read them when required.
 
-Reqd vars:
-VAULT_TOKEN or VAULT_TOKEN_FILE (VAULT_TOKEN takes precedence). See below example.
-if VAULT_TOKEN is not a valid uuid and VAULT_TOKEN_FILE exists then VAULT_TOKEN will be exported from its contents.
+### Reqd vars:
+- **VAULT_TOKEN** or **VAULT_TOKEN_FILE** (**VAULT_TOKEN** takes precedence). See below example.
+- If **VAULT_TOKEN** is not a valid uuid and **VAULT_TOKEN_FILE** exists then **VAULT_TOKEN** will be exported from its contents.
 
-VAULT_UNSEAL_KEYS or VAULT_UNSEAL_KEYS_FILE (VAULT_UNSEAL_KEYS takes precedence). See below example.
-if VAULT_TOKEN is empty and VAULT_UNSEAL_KEYS_FILE exists then VAULT_UNSEAL_KEYS will be exported from their contents.
+- **VAULT_UNSEAL_KEYS** or **VAULT_UNSEAL_KEYS_FILE** (**VAULT_UNSEAL_KEYS** takes precedence). See below example.
+- If **VAULT_TOKEN** is empty and **VAULT_UNSEAL_KEYS_FILE** exists then **VAULT_UNSEAL_KEYS** will be exported from their contents.
 
-VAULT_UNSEAL_KEYS_FILE and VAULT_TOKEN_FILE would typically point to files mounted in secret volumes on the controller deployment (see below)
+- **VAULT_UNSEAL_KEYS_FILE** and **VAULT_TOKEN_FILE** would typically point to files mounted in secret volumes on the controller deployment (see below)
 
-Optional vars:
+### Optional vars:
 
-VAULT_LABEL label on target pods. Default = "vault".
-VAULT_NAMESPACE namespace for target pods. Default = "kube-system".
-VAULT_INSTANCES static, comma-separated list of target hosts for local testing in docker. If provided overrides VAULT_LABEL and VAULT_NAMESPACE.
-VAULT_PORT vault service port. Default = "8243".
-VAULT_SCHEME vault transport scheme. Default = "https".
-VAULT_ADDR vault address for cluster. Default = "https://vault.kusbe-syetm.svc.cluster.local:8543".
-VAULT_TOKEN vault token for access. No default.
-VAULT_INIT_SHARES number of shares for unseal. Default = 5.
-VAULT_INIT_THRESHOLD threshold for unseal. Default = 3.
-VAULT_UNSEAL_KEYS if already initialised, the keys. No default.
-RELOAD_FREQUENCY how often to run controller loop. Default = "30s".
-VAULT_UNSEAL_SECRET_NAME k8s secret name for unseal keys in. Default = "vault-unseal-keys".
-VAULT_UNSEAL_SECRET_KEY k8s secret key for unseal keys. Default = "unseal-keys".
-VAULT_TOKEN_SECRET_NAME k8s secret name for root token. Default = "vault-tokens".
-VAULT_TOKEN_SECRET_KEY k8s secret key for root token. Default = "root-token".
+- **VAULT_LABEL** label on target pods. Default = "vault".
+- **VAULT_NAMESPACE** namespace for target pods. Default = "kube-system".
+- **VAULT_INSTANCES** static, comma-separated list of target hosts for local testing in docker. If provided overrides - **VAULT_LABEL** and **VAULT_NAMESPACE**.
+- **VAULT_PORT** vault service port. Default = "8243".
+- **VAULT_SCHEME** vault transport scheme. Default = "https".
+- **VAULT_ADDR** vault address for cluster. Default = "https://vault.kusbe-syetm.svc.cluster.local:8543".
+- **VAULT_TOKEN** vault token for access. No default.
+- **VAULT_INIT_SHARES** number of shares for unseal. Default = 5.
+- **VAULT_INIT_THRESHOLD** threshold for unseal. Default = 3.
+- **VAULT_UNSEAL_KEYS** if already initialised, the keys. No default.
+- **RELOAD_FREQUENCY** how often to run controller loop. Default = "30s".
+- **VAULT_UNSEAL_SECRET_NAME** k8s secret name for unseal keys in. Default = "vault-unseal-keys".
+- **VAULT_UNSEAL_SECRET_KEY** k8s secret key for unseal keys. Default = "unseal-keys".
+- **VAULT_TOKEN_SECRET_NAME** k8s secret name for root token. Default = "vault-tokens".
+- **VAULT_TOKEN_SECRET_KEY** k8s secret key for root token. Default = "root-token".
 
 Note:
 Building on Linux:
+```
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build controller.go
+```
 
-Example controller deployment:
+### Example controller deployment:
 
 ```
 ---
@@ -103,7 +105,7 @@ spec:
 
 ```
 
-Policies
+### Policies
 
 The controller optionally supports a CRD to handle creating Vault policies and tokens for them, it will stash these tokens in a secret in the namespace the CRD was created in. Definition:
 
@@ -125,7 +127,7 @@ spec:
 
 ```
 
-Example of a policy:
+### Example of a policy:
 
 ```
 ---
@@ -145,3 +147,5 @@ spec:
 ```
 
 In this case a policy 'vault-mysecrets-read-only' would be created and a token for it stashed in my-ns/vault-mysecrets-read-only:vault-mysecrets-read-only. The default TTL for the token is 24h.
+
+## End
