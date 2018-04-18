@@ -198,19 +198,19 @@ func (vhost *VirtualHost) Validate() error {
     if reflect.TypeOf(vhost.Scheme).String() != "string" || schemeRegex.MatchString(reflect.ValueOf(vhost.Scheme).String()) != true {
         return fmt.Errorf("Scheme must be set")
     }
-    if reflect.TypeOf(vhost.Ssl).String() != "bool" {
+    if reflect.TypeOf(vhost.Ssl).Kind() != reflect.Bool {
         return fmt.Errorf("Ssl label must be true; false")
     }
-    if reflect.TypeOf(vhost.Http2).String() != "bool" {
+    if reflect.TypeOf(vhost.Http2).Kind() != reflect.Bool {
         return fmt.Errorf("Http2 label must be true; false")
     }
     if (vhost.Http2 == true) && (vhost.Ssl != true || vhost.Nonssl != false) {
         return fmt.Errorf("If http2 is enabled then ssl and httpsOnly must be true")
     }
-    if reflect.TypeOf(vhost.Nonssl).String() != "bool" {
+    if reflect.TypeOf(vhost.Nonssl).Kind() != reflect.Bool {
         return fmt.Errorf("Nonssl label must be true; false")
     }
-    if reflect.TypeOf(vhost.BlueGreen).String() != "bool" {
+    if reflect.TypeOf(vhost.BlueGreen).Kind() != reflect.Bool {
         return fmt.Errorf("BlueGreen label must be true; false")
     }
     if reflect.TypeOf(vhost.Paths).String() != "[]*nginx.Path" || vhost.Paths == nil {
