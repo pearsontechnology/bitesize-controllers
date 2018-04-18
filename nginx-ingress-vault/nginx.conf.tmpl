@@ -92,7 +92,11 @@ http {
   server {
     # BITE-1446 NGINX security improvements - Remove NGINX version number
     server_tokens off;
+    {{ if $i.Http2 }}
+    listen 443 http2 ssl;
+    {{ else }}
     listen 443 ssl;
+    {{end}}{{/* if $i.Http2 */}}
     server_name {{$i.Host}};
     resolver {{$i.GetResolver}}:{{$i.GetResolverPort}};
     {{if $i.Ssl}}

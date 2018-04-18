@@ -22,6 +22,7 @@ type VirtualHost struct {
     Paths     []*Path
     Ssl       bool
     Nonssl    bool
+    Http2     bool
     Scheme    string
     Ingress   v1beta1.Ingress
     Vault     *vlt.VaultReader
@@ -40,6 +41,7 @@ func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHo
         Namespace: ingress.Namespace,
         Ssl: false,
         Nonssl: true,
+        Http2: false,
         Scheme: "http",
         Ingress: ingress,
         BlueGreen: false,
@@ -62,6 +64,9 @@ func (vhost *VirtualHost) applyLabels() {
         }
         if k == "httpsOnly" && v == "true" {
             vhost.Nonssl = false
+        }
+        if k == "http2" && v == "true" {
+            vhost.Http2 = true
         }
         if k == "httpsBackend" && v == "true" {
             vhost.Scheme = "https"
@@ -195,6 +200,12 @@ func (vhost *VirtualHost) Validate() error {
     }
     if reflect.TypeOf(vhost.Ssl).String() != "bool" {
         return fmt.Errorf("Ssl label must be true; false")
+    }
+    if reflect.TypeOf(vhost.Http2).String() != "bool" {
+        return fmt.Errorf("Http2 label must be true; false")
+    }
+    if (vhost.Http2 == true) && (vhost.Ssl != true || vhost.Nonssl != false) {
+        return fmt.Errorf("If http2 is enabled then ssl and httpsOnly must be true")
     }
     if reflect.TypeOf(vhost.Nonssl).String() != "bool" {
         return fmt.Errorf("Nonssl label must be true; false")
