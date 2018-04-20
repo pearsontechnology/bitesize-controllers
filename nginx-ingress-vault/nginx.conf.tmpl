@@ -77,7 +77,7 @@ http {
   }
   {{end}}{{/* range $path := $i.Paths */}}
   {{end}}{{/* if $i.BlueGreen */}}
-  {{if not $i.Nonssl}}
+  {{if not $i.HTTPEnabled}}
   server {
     # BITE-1446 NGINX security improvements - Remove NGINX version number
     server_tokens off;
@@ -87,7 +87,7 @@ http {
     resolver {{$i.GetResolver}}:{{$i.GetResolverPort}};
     return  301  https://$server_name$request_uri;
   }
-  {{end}}{{/* if not $i.Nonssl */}}
+  {{end}}{{/* if not $i.HTTPEnabled */}}
 
   server {
     # BITE-1446 NGINX security improvements - Remove NGINX version number
@@ -99,13 +99,13 @@ http {
     {{end}}{{/* if $i.Http2 */}}
     server_name {{$i.Host}};
     resolver {{$i.GetResolver}}:{{$i.GetResolverPort}};
-    {{if $i.Ssl}}
+    {{if $i.HTTPSEnabled}}
     ssl_certificate   /etc/nginx/certs/{{$i.Host}}.crt;
     ssl_certificate_key /etc/nginx/certs/{{$i.Host}}.key;
-    {{end}}{{/* if $i.Ssl */}}
-    {{if $i.Nonssl}}
+    {{end}}{{/* if $i.HTTPSEnabled */}}
+    {{if $i.HTTPEnabled}}
     listen 80;
-    {{end}}{{/* if $i.Nonssl */}}
+    {{end}}{{/* if $i.HTTPEnabled */}}
     # cops-165 - This will intercept the back-end errors and forward a custom
     # error page in the Nginx node.
     proxy_intercept_errors on;

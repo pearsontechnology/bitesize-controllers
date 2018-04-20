@@ -16,17 +16,17 @@ import (
 )
 
 type VirtualHost struct {
-    Name      string
-    Host      string
-    Namespace string
-    Paths     []*Path
-    Ssl       bool
-    Nonssl    bool
-    Http2     bool
-    Scheme    string
-    Ingress   v1beta1.Ingress
-    Vault     *vlt.VaultReader
-    BlueGreen bool
+    Name         string
+    Host         string
+    Namespace    string
+    Paths        []*Path
+    HTTPSEnabled bool
+    HTTPEnabled  bool
+    Http2        bool
+    Scheme       string
+    Ingress      v1beta1.Ingress
+    Vault        *vlt.VaultReader
+    BlueGreen    bool
 }
 
 // NewVirtualHost returns virtual host instance
@@ -39,8 +39,8 @@ func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHo
         Name: name,
         Host: ingress.Spec.Rules[0].Host,
         Namespace: ingress.Namespace,
-        Ssl: false,
-        Nonssl: true,
+        HTTPSEnabled: false,
+        HTTPEnabled: true,
         Http2: false,
         Scheme: "http",
         Ingress: ingress,
@@ -60,10 +60,10 @@ func (vhost *VirtualHost) applyLabels() {
 
     for k, v := range(labels) {
         if k == "ssl" && v == "true" {
-            vhost.Ssl = true
+            vhost.HTTPSEnabled = true
         }
         if k == "httpsOnly" && v == "true" {
-            vhost.Nonssl = false
+            vhost.HTTPEnabled = false
         }
         if k == "http2" && v == "true" {
             vhost.Http2 = true
@@ -105,31 +105,31 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
         return fmt.Errorf("Vault disabled for %s", vhost.Host)
     }
 
-    if !vhost.Ssl {
+    if !vhost.HTTPSEnabled {
         return fmt.Errorf("No SSL for %s", vhost.Host)
     }
 
     key, crt, err := vhost.Vault.GetSecretsForHost(vhost.Host)
     if err != nil {
-        vhost.Ssl = false
+        vhost.HTTPSEnabled = false
         return err
     }
 
     keyAbsolutePath := ConfigPath + "/certs/" + key.Filename
     if err := ioutil.WriteFile(keyAbsolutePath, []byte(key.Secret), 0400); err != nil {
-        vhost.Ssl = false
+        vhost.HTTPSEnabled = false
         return fmt.Errorf("Failed to write file %v: %v", keyAbsolutePath, err)
     }
 
     certAbsolutePath := ConfigPath + "/certs/" + crt.Filename
     if err := ioutil.WriteFile(certAbsolutePath, []byte(crt.Secret), 0400); err != nil {
-        vhost.Ssl = false
+        vhost.HTTPSEnabled = false
         return fmt.Errorf("failed to write file %v: %v", certAbsolutePath, err)
     }
 
     // Cert validation
     if _, err := tls.LoadX509KeyPair(certAbsolutePath, keyAbsolutePath); err != nil {
-        vhost.Ssl = false
+        vhost.HTTPSEnabled = false
         return fmt.Errorf("Failed to validate certificate")
     }
 
@@ -198,17 +198,17 @@ func (vhost *VirtualHost) Validate() error {
     if reflect.TypeOf(vhost.Scheme).String() != "string" || schemeRegex.MatchString(reflect.ValueOf(vhost.Scheme).String()) != true {
         return fmt.Errorf("Scheme must be set")
     }
-    if reflect.TypeOf(vhost.Ssl).Kind() != reflect.Bool {
-        return fmt.Errorf("Ssl label must be true; false")
+    if reflect.TypeOf(vhost.HTTPSEnabled).Kind() != reflect.Bool {
+        return fmt.Errorf("HTTPSEnabled label must be true; false")
     }
     if reflect.TypeOf(vhost.Http2).Kind() != reflect.Bool {
         return fmt.Errorf("Http2 label must be true; false")
     }
-    if (vhost.Http2 == true) && (vhost.Ssl != true || vhost.Nonssl != false) {
-        return fmt.Errorf("If http2 is enabled then ssl and httpsOnly must be true")
+    if (vhost.Http2 == true) && (vhost.HTTPSEnabled != true || vhost.HTTPEnabled != false) {
+        return fmt.Errorf("If http2 is enabled then HTTPSEnabled and httpsOnly must be true")
     }
-    if reflect.TypeOf(vhost.Nonssl).Kind() != reflect.Bool {
-        return fmt.Errorf("Nonssl label must be true; false")
+    if reflect.TypeOf(vhost.HTTPEnabled).Kind() != reflect.Bool {
+        return fmt.Errorf("HTTPEnabled label must be true; false")
     }
     if reflect.TypeOf(vhost.BlueGreen).Kind() != reflect.Bool {
         return fmt.Errorf("BlueGreen label must be true; false")

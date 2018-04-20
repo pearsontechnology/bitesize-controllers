@@ -114,7 +114,7 @@ func main() {
 
             if err = vhost.CreateVaultCerts(); err != nil {
                 log.Errorf("%s\n", err.Error() )
-                vhost.Ssl = false
+                vhost.HTTPSEnabled = false
             }
             if len(vhost.Paths) > 0 {
                 virtualHosts = append(virtualHosts, vhost)
