@@ -168,7 +168,7 @@ If either VAULT_ADDR or VAULT_TOKEN are not set then vault support is disabled a
 Other labels:
 
 ```
-http2: "true"
+http2: "true" (as of 1.9.9)
 httpsBackend: "true"
 httpsOnly: "true"
 ssl: "true"
