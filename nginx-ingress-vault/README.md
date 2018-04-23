@@ -165,4 +165,14 @@ You should now be able to point www.example.com at the Ingress nodes and reach w
 
 If either VAULT_ADDR or VAULT_TOKEN are not set then vault support is disabled and the controller should act like nginx-alpha, with the addition of access and err logging from the nginx instance to stdout/err on the container.
 
+Other labels:
+
+```
+http2: "true" (as of 1.9.9)
+httpsBackend: "true"
+httpsOnly: "true"
+ssl: "true"
+```
+Note that if http2 is enabled then ssl and httpsOnly should also be true.
+
 # End
