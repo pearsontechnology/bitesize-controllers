@@ -20,6 +20,7 @@ import (
     "reflect"
     "os"
     "time"
+    "strconv"
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
     "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/nginx"
@@ -31,7 +32,9 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.9.9"
+const version = "1.9.10"
+const vaultDefaultRetries = 5
+const vaultDefaultTimeout = "30s" //cumulative
 
 func main() {
 
@@ -58,6 +61,18 @@ func main() {
 
     stats := statsd.NewStatsdClient("localhost:8125", "nginx.config.")
 
+    vr := os.Getenv("VAULT_RETRIES")
+    vaultRetries, err := strconv.Atoi(vr)
+    if err != nil {
+        vaultRetries = vaultDefaultRetries
+    }
+
+    vt := os.Getenv("VAULT_TIMEOUT")
+    vaultTimeout, err := time.ParseDuration(vt)
+    if err != nil {
+        vaultTimeout, _ = time.ParseDuration(vaultDefaultTimeout)
+    }
+
     known := &v1beta1.IngressList{}
 
     vault, _ := vlt.NewVaultReader()
@@ -79,7 +94,7 @@ func main() {
             }
         }
 
-        if !vault.Ready() {
+        if !vault.Ready(vaultTimeout, vaultRetries) {
             vault, err = vlt.NewVaultReader()
 
             // Reset existing ingress list to allow pull of ssl from vault
@@ -112,7 +127,7 @@ func main() {
                 continue
             }
 
-            if err = vhost.CreateVaultCerts(); err != nil {
+            if err = vhost.CreateVaultCerts(vaultTimeout, vaultRetries); err != nil {
                 log.Errorf("%s\n", err.Error() )
                 vhost.HTTPSEnabled = false
             }

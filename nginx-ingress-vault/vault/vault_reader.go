@@ -116,7 +116,7 @@ func NewVaultReader() (*VaultReader, error) {
 
 // Ready returns true if vault is unsealed and
 // ready to use
-func (r *VaultReader) Ready() bool {
+func (r *VaultReader) Ready(vaultTimeout time.Duration, vaultRetries int) bool {
     if r == nil || r.Client == nil {
         return false
     }
@@ -139,7 +139,8 @@ func (r *VaultReader) Ready() bool {
 
     retry.Do(getStatus,
         retry.Sleep(1 * time.Second),
-        retry.MaxTries(5),
+        retry.MaxTries(vaultRetries),
+        retry.Timeout(vaultTimeout),
         retry.RetryChecker(errcheck),
     )
 
@@ -165,7 +166,7 @@ func (r *VaultReader) RenewToken() {
     }
 }
 
-func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
+func (r *VaultReader) GetSecretsForHost(hostname string, vaultTimeout time.Duration, vaultRetries int) (*Cert, *Cert, error) {
     var e, err error
 
     vaultPath := "secret/ssl/" + hostname
@@ -187,7 +188,8 @@ func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
 
     retry.Do(getData,
         retry.Sleep(1 * time.Second),
-        retry.MaxTries(5),
+        retry.MaxTries(vaultRetries),
+        retry.Timeout(vaultTimeout),
         retry.RetryChecker(errcheck),
     )
 

@@ -3,6 +3,7 @@ package nginx
 import (
     "fmt"
     "os"
+    "time"
     "io/ioutil"
     "net/url"
     "net/http"
@@ -100,7 +101,7 @@ func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.
 
 // CreateVaultCerts gets certificates (private and crt) from vault
 // and writes them to nginx ssl config path. Returns error on failure
-func (vhost *VirtualHost) CreateVaultCerts() error {
+func (vhost *VirtualHost) CreateVaultCerts(vaultTimeout time.Duration, vaultRetries int) error {
     if !vhost.Vault.Enabled {
         return fmt.Errorf("Vault disabled for %s", vhost.Host)
     }
@@ -109,7 +110,7 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
         return fmt.Errorf("No SSL for %s", vhost.Host)
     }
 
-    key, crt, err := vhost.Vault.GetSecretsForHost(vhost.Host)
+    key, crt, err := vhost.Vault.GetSecretsForHost(vhost.Host, vaultTimeout, vaultRetries)
     if err != nil {
         vhost.HTTPSEnabled = false
         return err
