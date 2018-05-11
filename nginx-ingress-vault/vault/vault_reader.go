@@ -22,8 +22,8 @@ type VaultReader struct {
     Enabled bool
     Client *vault.Client
     TokenRefreshInterval *time.Ticker
-    vaultTimeout time.Duration
-    vaultRetries int
+    Timeout time.Duration
+    Retries int
 }
 
 type Cert struct {
@@ -128,8 +128,8 @@ func NewVaultReader() (*VaultReader, error) {
         Enabled: enabled,
         Client: client,
         TokenRefreshInterval: time.NewTicker(time.Minute * time.Duration(refreshInterval)),
-        vaultRetries: retries,
-        vaultTimeout: timeout,
+        Retries: retries,
+        Timeout: timeout,
     }, nil
 }
 
@@ -158,8 +158,8 @@ func (r *VaultReader) Ready() bool {
 
     retry.Do(getStatus,
         retry.Sleep(1 * time.Second),
-        retry.MaxTries(r.vaultRetries),
-        retry.Timeout(r.vaultTimeout),
+        retry.MaxTries(r.Retries),
+        retry.Timeout(r.Timeout),
         retry.RetryChecker(errcheck),
     )
 
@@ -207,8 +207,8 @@ func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
 
     retry.Do(getData,
         retry.Sleep(1 * time.Second),
-        retry.MaxTries(r.vaultRetries),
-        retry.Timeout(r.vaultTimeout),
+        retry.MaxTries(r.Retries),
+        retry.Timeout(r.Timeout),
         retry.RetryChecker(errcheck),
     )
 
