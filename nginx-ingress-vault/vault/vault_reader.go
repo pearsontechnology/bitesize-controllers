@@ -15,10 +15,15 @@ import (
     "github.com/giantswarm/retry-go"
 )
 
+const vaultDefaultRetries = 5
+const vaultDefaultTimeout = "30s" //cumulative
+
 type VaultReader struct {
     Enabled bool
     Client *vault.Client
     TokenRefreshInterval *time.Ticker
+    Timeout time.Duration
+    Retries int
 }
 
 type Cert struct {
@@ -88,6 +93,18 @@ func NewVaultReader() (*VaultReader, error) {
         enabled = false
     }
 
+    vr := os.Getenv("VAULT_RETRIES")
+    retries, err := strconv.Atoi(vr)
+    if err != nil {
+        retries = vaultDefaultRetries
+    }
+
+    vt := os.Getenv("VAULT_TIMEOUT")
+    timeout, err := time.ParseDuration(vt)
+    if err != nil {
+        timeout, _ = time.ParseDuration(vaultDefaultTimeout)
+    }
+
     refreshInterval, err := strconv.Atoi(refreshFlag)
     if err != nil {
         refreshInterval = 10
@@ -111,6 +128,8 @@ func NewVaultReader() (*VaultReader, error) {
         Enabled: enabled,
         Client: client,
         TokenRefreshInterval: time.NewTicker(time.Minute * time.Duration(refreshInterval)),
+        Retries: retries,
+        Timeout: timeout,
     }, nil
 }
 
@@ -139,7 +158,8 @@ func (r *VaultReader) Ready() bool {
 
     retry.Do(getStatus,
         retry.Sleep(1 * time.Second),
-        retry.MaxTries(5),
+        retry.MaxTries(r.Retries),
+        retry.Timeout(r.Timeout),
         retry.RetryChecker(errcheck),
     )
 
@@ -187,7 +207,8 @@ func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
 
     retry.Do(getData,
         retry.Sleep(1 * time.Second),
-        retry.MaxTries(5),
+        retry.MaxTries(r.Retries),
+        retry.Timeout(r.Timeout),
         retry.RetryChecker(errcheck),
     )
 
