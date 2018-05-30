@@ -121,7 +121,7 @@ func main() {
             }
         }
 
-        if len(virtualHosts) == 0 {
+        if len(virtualHosts) == 0 && onKubernetes == true {
             continue
         }
 
