@@ -37,7 +37,7 @@ if [ ${DEBUG} = "true" ]; then
   netstat -an | grep LISTEN
   env
 fi
-sleep 30
+
 exec /controller &
 pid=$!
 trap 'kill -SIGTERM $pid' EXIT
