@@ -12,8 +12,13 @@ import (
 )
 
 var ConfigPath = "/etc/nginx"
+var DefaultRootPath = "/usr/share/nginx/html"
 var Command = "nginx"
 
+type HealthStatus struct {
+    Vhosts int
+    Https_Vhosts int
+}
 
 func Start() error {
     nginxArgs := []string{
@@ -97,10 +102,32 @@ func WriteConfig(virtualHosts []*VirtualHost) error {
         return err
     }
 
-
     if debug  == "true" {
         conf, _ := ioutil.ReadFile(ConfigPath + "/nginx.conf")
         log.Debugf(string(conf))
+    }
+
+    h, err := os.Create(DefaultRootPath + "/healthz")
+    if err != nil {
+        log.Errorf("Error writing health status: %s: %s", DefaultRootPath + "/healthz", err.Error())
+    } else {
+        vHosts := 0
+        httpsHosts := 0
+        for _, vhost := range virtualHosts {
+            vHosts++
+            if vhost.HTTPSEnabled == true {
+                httpsHosts++
+            }
+        }
+        healthStatus := HealthStatus{vHosts, httpsHosts}
+        hTmpl, err := template.ParseFiles(ConfigPath + "/healthz.tmpl")
+        if err != nil {
+            log.Errorf("Error parsing healthz template: %s: %s", ConfigPath + "/healthz.tmpl", err.Error())
+        }
+        err = hTmpl.Execute(h, healthStatus)
+        if err != nil {
+            log.Errorf("Error generating health status: %s: %s", DefaultRootPath + "/healthz", err.Error())
+        }
     }
 
     return nil

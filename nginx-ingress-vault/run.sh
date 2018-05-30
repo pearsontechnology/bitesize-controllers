@@ -37,12 +37,7 @@ if [ ${DEBUG} = "true" ]; then
   netstat -an | grep LISTEN
   env
 fi
-
-# BITE-2114 Switch to ClusterFirstWithHostNet once on k8s 1.6.x
-cp /etc/resolv.conf .
-sed -i 's/^nameserver [0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}\.[0-9]\{1,3\}/nameserver 127.0.0.1/g' ./resolv.conf
-cp -f ./resolv.conf /etc/resolv.conf
-
+sleep 30
 exec /controller &
 pid=$!
 trap 'kill -SIGTERM $pid' EXIT

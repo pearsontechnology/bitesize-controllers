@@ -31,7 +31,7 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const version = "1.9.10"
+const version = "1.9.11"
 
 func main() {
 
@@ -119,6 +119,10 @@ func main() {
             if len(vhost.Paths) > 0 {
                 virtualHosts = append(virtualHosts, vhost)
             }
+        }
+
+        if len(virtualHosts) == 0 {
+            continue
         }
 
         nginx.WriteConfig(virtualHosts)
