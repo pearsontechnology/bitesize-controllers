@@ -21,7 +21,8 @@ It will:
 
 ### Optional vars:
 
-- **VAULT_LABEL** label on target pods. Default = "vault".
+- **VAULT_LABEL_KEY** label key on target pods. Default = "k8s-app".
+- **VAULT_LABEL_VALUE** label value on target pods. Default = "vault".
 - **VAULT_NAMESPACE** namespace for target pods. Default = "kube-system".
 - **VAULT_INSTANCES** static, comma-separated list of target hosts for local testing in docker. If provided overrides - **VAULT_LABEL** and **VAULT_NAMESPACE**.
 - **VAULT_PORT** vault service port. Default = "8243".
