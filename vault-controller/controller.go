@@ -17,7 +17,8 @@ import (
 const version = "0.1"
 const defaultNameSpace = "kube-system"
 const defaultSvcTld = ".svc.cluster.local"
-const defaultVaultLabel = "vault"
+const defaultVaultLabelKey = "k8s-app"
+const defaultVaultLabelVal = "vault"
 const defaultVaultPort = "8243"
 const defaultVaultScheme = "https"
 const defaultVaultAddress = "https://vault." + defaultNameSpace + defaultSvcTld + ":" + defaultVaultPort
@@ -161,11 +162,17 @@ func main() {
 
 	log.Infof("Starting vault controller version: %s", version)
 
-    vaultLabel := os.Getenv("VAULT_LABEL")
-    if vaultLabel == "" {
-        vaultLabel = defaultVaultLabel
+    vaultLabelKey := os.Getenv("VAULT_LABEL_KEY")
+    if vaultLabelKey == "" {
+        vaultLabelKey = defaultVaultLabelKey
     }
-    log.Debugf("vaultLabel: %v", vaultLabel)
+    vaultLabelVal := os.Getenv("VAULT_LABEL_VALUE")
+    if vaultLabelVal == "" {
+        vaultLabelVal = defaultVaultLabelVal
+    }
+    log.Debugf("vaultLabelKey: %v", vaultLabelKey)
+    log.Debugf("vaultLabelVal: %v", vaultLabelVal)
+
     vaultNamespace := os.Getenv("VAULT_NAMESPACE")
     if vaultNamespace == "" {
         vaultNamespace = defaultNameSpace
@@ -237,8 +244,8 @@ func main() {
         if vaultInstances == "" && onKubernetes == false {
             log.Errorf("Invalid value for env var VAULT_INSTANCES: %v", vaultInstances)
         } else if vaultInstances == "" && onKubernetes == true {
-            log.Infof("Proceeding with pod discovery on %v", vaultLabel)
-            instanceList, err = k8s.GetPodIps(vaultLabel, vaultNamespace)
+            log.Infof("Proceeding with pod discovery on %v/%v", vaultLabelKey, vaultLabelVal)
+            instanceList, err = k8s.GetPodIps(vaultLabelKey, vaultLabelVal, vaultNamespace)
             if err != nil {
                 log.Infof("Error retrieving Pod IPs: %v", err )
             }

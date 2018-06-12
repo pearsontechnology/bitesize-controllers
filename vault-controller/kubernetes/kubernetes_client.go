@@ -19,9 +19,9 @@ type PatchSpec struct {
         Value string `json:"value"`
 }
 
-func listOptions(value string) metav1.ListOptions {
+func listOptions(key string, value string) metav1.ListOptions {
     return metav1.ListOptions{
-        LabelSelector: "name=" + value,
+        LabelSelector: key + "=" + value,
     }
 }
 
@@ -41,13 +41,13 @@ func getClient()(*kubernetes.Clientset, error) {
     return clientset, err
 }
 
-func GetPods(label string, namespace string) (pods *corev1.PodList, err error) {
+func GetPods(labelKey string, labelVal string, namespace string) (pods *corev1.PodList, err error) {
     pods = &corev1.PodList{}
 
     clientset, err := getClient()
     if err == nil {
-        pods, err = clientset.CoreV1().Pods(namespace).List(listOptions(label))
-        log.Debugf("GetPods found: %v pods in %v with label %v", len(pods.Items), namespace, label)
+        pods, err = clientset.CoreV1().Pods(namespace).List(listOptions(labelKey, labelVal))
+        log.Debugf("GetPods found: %v pods in %v with label %v/%v", len(pods.Items), namespace, labelKey, labelVal)
         if err != nil {
             log.Infof("Error GetPods: %v", err.Error())
         }
@@ -58,13 +58,13 @@ func GetPods(label string, namespace string) (pods *corev1.PodList, err error) {
     }
 }
 
-func GetPodIps(label string, namespace string) (instanceList map[string]string, err error) {
+func GetPodIps(labelKey string, labelVal string, namespace string) (instanceList map[string]string, err error) {
 
     var m = make(map[string]string)
     i := 0
     pods := &corev1.PodList{}
 
-    pods, err = GetPods(label, namespace)
+    pods, err = GetPods(labelKey, labelVal, namespace)
     for _, pod := range pods.Items {
         log.Debugf("Pod found: %v", pod.ObjectMeta.Name)
         switch pod.Status.Phase {
