@@ -47,8 +47,8 @@ http {
 
     listen 80 default_server;
 
-    localtion /healthz {
-        {{ if .Errors == 0 }}return 200;
+    location /healthz {
+        {{ if eq .Errors 0 }}return 200;
         {{ else }}return 500;{{ end }}
     }
     location / {
