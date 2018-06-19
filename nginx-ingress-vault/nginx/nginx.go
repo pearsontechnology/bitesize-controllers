@@ -16,9 +16,9 @@ var ConfigPath = "/etc/nginx"
 var DefaultRootPath = "/usr/share/nginx/html"
 var Command = "nginx"
 
-type HealthStatus struct {
-    Vhosts int
-    Https_Vhosts int
+type TemplatePayload struct {
+    Vhosts []*VirtualHost
+    Errors int
 }
 
 func Start() error {
@@ -85,6 +85,9 @@ func WriteCustomErrorPages(virtualHosts []*VirtualHost) error {
 }
 
 func WriteConfig(virtualHosts []*VirtualHost) error {
+
+    var payload = TemplatePayload{Vhosts: virtualHosts, Errors: monitor.Status.GetErrors()}
+
     // Needs to split into separate files
     log.Info("Generating config")
     debug := os.Getenv("DEBUG")
@@ -97,40 +100,17 @@ func WriteConfig(virtualHosts []*VirtualHost) error {
 
     if w, err := os.Create(ConfigPath + "/nginx.conf"); err != nil {
         log.Errorf("Error writing config: %s", err.Error())
+        monitor.Status.IncTemplateErrors()
         return err
-    } else if err := tmpl.Execute(w, virtualHosts); err != nil {
+    } else if err := tmpl.Execute(w, payload); err != nil {
         log.Errorf("Error generating template: %s", err.Error())
+        monitor.Status.IncTemplateErrors()
         return err
     }
 
     if debug  == "true" {
         conf, _ := ioutil.ReadFile(ConfigPath + "/nginx.conf")
         log.Debugf(string(conf))
-    }
-
-    h, err := os.Create(DefaultRootPath + "/healthz")
-    if err != nil {
-        log.Errorf("Error writing health status: %s: %s", DefaultRootPath + "/healthz", err.Error())
-    } else {
-        vHosts := 0
-        httpsHosts := 0
-        for _, vhost := range virtualHosts {
-            vHosts++
-            if vhost.HTTPSEnabled == true {
-                httpsHosts++
-            } else {
-                monitor.Status.IncNonSslVHosts()
-            }
-        }
-        healthStatus := HealthStatus{vHosts, httpsHosts}
-        hTmpl, err := template.ParseFiles(ConfigPath + "/healthz.tmpl")
-        if err != nil {
-            log.Errorf("Error parsing healthz template: %s: %s", ConfigPath + "/healthz.tmpl", err.Error())
-        }
-        err = hTmpl.Execute(h, healthStatus)
-        if err != nil {
-            log.Errorf("Error generating health status: %s: %s", DefaultRootPath + "/healthz", err.Error())
-        }
     }
 
     return nil
