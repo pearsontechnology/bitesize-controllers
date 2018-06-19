@@ -23,12 +23,17 @@ import (
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
     "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/nginx"
+    "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
     vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
     k8s "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/kubernetes"
 
     "github.com/quipo/statsd"
 
     log "github.com/Sirupsen/logrus"
+
+    "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+    "net/http"
 )
 
 const version = "1.9.11"
@@ -36,6 +41,12 @@ const version = "1.9.11"
 func main() {
 
     log.SetFormatter(&log.JSONFormatter{})
+
+    // Prometheus
+    prometheus.MustRegister(&monitor.Status)
+    http.Handle("/metrics", promhttp.Handler())
+    log.Info("Starting /metrics on port :8080")
+    log.Fatal(http.ListenAndServe(":8080", nil))
 
     debug := os.Getenv("DEBUG")
     if debug == "true" {
@@ -67,6 +78,7 @@ func main() {
 
     // Controller loop
     for {
+        monitor.Status.Reset()
 
         if !vault.Enabled {
             vault, err = vlt.NewVaultReader()
