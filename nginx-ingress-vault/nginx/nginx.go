@@ -9,6 +9,7 @@ import (
 
     "text/template"
     log "github.com/Sirupsen/logrus"
+    "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
 )
 
 var ConfigPath = "/etc/nginx"
@@ -117,6 +118,8 @@ func WriteConfig(virtualHosts []*VirtualHost) error {
             vHosts++
             if vhost.HTTPSEnabled == true {
                 httpsHosts++
+            } else {
+                monitor.Status.IncNonSslVHosts()
             }
         }
         healthStatus := HealthStatus{vHosts, httpsHosts}

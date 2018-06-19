@@ -63,8 +63,6 @@ func (vhost *VirtualHost) applyLabels() {
         if k == "ssl" && v == "true" {
             vhost.HTTPSEnabled = true
             monitor.Status.IncSslVHosts()
-        } else {
-            monitor.Status.IncNonSslVHosts()
         }
         if k == "httpsOnly" && v == "true" {
             vhost.HTTPEnabled = false

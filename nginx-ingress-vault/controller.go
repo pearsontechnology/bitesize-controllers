@@ -80,7 +80,6 @@ func main() {
 
     // Controller loop
     for {
-        monitor.Status.Reset()
 
         if !vault.Enabled {
             vault, err = vlt.NewVaultReader()
@@ -115,7 +114,11 @@ func main() {
             continue
         }
 
+        // Generating new config starts here
         var virtualHosts = []*nginx.VirtualHost{}
+
+        // Reset prometheus counters
+        monitor.Status.Reset()
 
         for _, ingress := range ingresses.Items {
             vhost,_ := nginx.NewVirtualHost(ingress, vault)
