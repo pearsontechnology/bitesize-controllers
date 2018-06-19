@@ -42,16 +42,18 @@ func main() {
 
     log.SetFormatter(&log.JSONFormatter{})
 
-    // Prometheus
-    prometheus.MustRegister(&monitor.Status)
-    http.Handle("/metrics", promhttp.Handler())
-    log.Info("Starting /metrics on port :8080")
-    log.Fatal(http.ListenAndServe(":8080", nil))
-
     debug := os.Getenv("DEBUG")
     if debug == "true" {
         log.SetLevel(log.DebugLevel)
     }
+
+    // Prometheus
+    prometheus.MustRegister(&monitor.Status)
+    http.Handle("/metrics", promhttp.Handler())
+    log.Infof("Starting /metrics on port :8080")
+    go func() {
+        log.Fatal(http.ListenAndServe(":8080", nil))
+    }()
 
     log.Infof("Ingress Controller version: %v", version)
 
@@ -117,10 +119,12 @@ func main() {
 
         for _, ingress := range ingresses.Items {
             vhost,_ := nginx.NewVirtualHost(ingress, vault)
+            monitor.Status.IncVHosts()
             vhost.CollectPaths()
 
             if err = vhost.Validate(); err != nil {
                 log.Errorf("Ingress %s failed validation: %s", vhost.Name, err.Error() )
+                monitor.Status.IncFailedVHosts()
                 continue
             }
 

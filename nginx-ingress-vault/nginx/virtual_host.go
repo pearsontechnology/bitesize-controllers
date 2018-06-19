@@ -12,6 +12,7 @@ import (
     "regexp"
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
+    "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
     vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
 )
 
@@ -61,6 +62,9 @@ func (vhost *VirtualHost) applyLabels() {
     for k, v := range(labels) {
         if k == "ssl" && v == "true" {
             vhost.HTTPSEnabled = true
+            monitor.Status.IncSslVHosts()
+        } else {
+            monitor.Status.IncNonSslVHosts()
         }
         if k == "httpsOnly" && v == "true" {
             vhost.HTTPEnabled = false
@@ -111,6 +115,7 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
 
     key, crt, err := vhost.Vault.GetSecretsForHost(vhost.Host)
     if err != nil {
+        monitor.Status.IncNoCertSslVHosts()
         vhost.HTTPSEnabled = false
         return err
     }
@@ -118,18 +123,21 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
     keyAbsolutePath := ConfigPath + "/certs/" + key.Filename
     if err := ioutil.WriteFile(keyAbsolutePath, []byte(key.Secret), 0400); err != nil {
         vhost.HTTPSEnabled = false
+        monitor.Status.IncFailedSslVHosts()
         return fmt.Errorf("Failed to write file %v: %v", keyAbsolutePath, err)
     }
 
     certAbsolutePath := ConfigPath + "/certs/" + crt.Filename
     if err := ioutil.WriteFile(certAbsolutePath, []byte(crt.Secret), 0400); err != nil {
         vhost.HTTPSEnabled = false
+        monitor.Status.IncFailedSslVHosts()
         return fmt.Errorf("failed to write file %v: %v", certAbsolutePath, err)
     }
 
     // Cert validation
     if _, err := tls.LoadX509KeyPair(certAbsolutePath, keyAbsolutePath); err != nil {
         vhost.HTTPSEnabled = false
+        monitor.Status.IncSslVHostsCertFail()
         return fmt.Errorf("Failed to validate certificate")
     }
 

@@ -57,31 +57,31 @@ func (monitor *Monitor) Reset() {
     monitor.SslVHostsCertFail.counter = 0
 }
 
-func (monitor *Monitor) incVHosts() {
+func (monitor *Monitor) IncVHosts() {
     monitor.VHosts.counter++
 }
 
-func (monitor *Monitor) incSslVHosts() {
+func (monitor *Monitor) IncSslVHosts() {
     monitor.SslVHosts.counter++
 }
 
-func (monitor *Monitor) incNonSslVHosts() {
+func (monitor *Monitor) IncNonSslVHosts() {
     monitor.NonSslVHosts.counter++
 }
 
-func (monitor *Monitor) incFailedVHosts() {
+func (monitor *Monitor) IncFailedVHosts() {
     monitor.FailedVHosts.counter++
 }
 
-func (monitor *Monitor) incFailedSslVHosts() {
+func (monitor *Monitor) IncFailedSslVHosts() {
     monitor.FailedSslVHosts.counter++
 }
 
-func (monitor *Monitor) incNoCertSslVHosts() {
+func (monitor *Monitor) IncNoCertSslVHosts() {
     monitor.NoCertSslVHosts.counter++
 }
 
-func (monitor *Monitor) incSslVHostsCertFail() {
+func (monitor *Monitor) IncSslVHostsCertFail() {
     monitor.SslVHostsCertFail.counter++
 }
 
