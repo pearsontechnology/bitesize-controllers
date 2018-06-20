@@ -146,7 +146,7 @@ func (c *VaultClient) CreatePolicy(policy vaultpolicy.VaultPolicy) (token string
     opts := &vault.TokenCreateRequest{
         Policies: policies,
         DisplayName: policy.Name,
-		Lease: "24h"}
+		Period: "24h"}
 
     log.Infof("Creating token for policy: %v", policy.Name )
     log.Debugf("CreatePolicy token opts: %v", opts)
