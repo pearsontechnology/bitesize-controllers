@@ -2,6 +2,7 @@ package monitor
 
 import (
     "github.com/prometheus/client_golang/prometheus"
+    "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/version"
 )
 
 type MonitorCounter struct {
@@ -20,12 +21,11 @@ type Monitor struct {
     ConfigErrors      MonitorCounter
     TemplateErrors    MonitorCounter
 }
-const version = "1.9.11"
 
 var Status Monitor
 
 func init() {
-    Status.Version = version
+    Status.Version = version.Version
 
     Status.VHosts.desc = prometheus.NewDesc("ingress_vhosts",
         "Current number of ingress virtual hosts defined", nil, nil,)
@@ -53,60 +53,59 @@ func init() {
 
     Status.TemplateErrors.desc = prometheus.NewDesc("ingress_template_errors_encountered",
         "Number of errors rendering nginx.conf template", nil, nil,)
-
 }
 
-func (monitor *Monitor) Reset() {
-    monitor.VHosts.counter = 0
-    monitor.SslVHosts.counter = 0
-    monitor.NonSslVHosts.counter = 0
-    monitor.FailedVHosts.counter = 0
-    monitor.FailedSslVHosts.counter = 0
-    monitor.NoCertSslVHosts.counter = 0
-    monitor.SslVHostsCertFail.counter = 0
-    monitor.ConfigErrors.counter = 0
-    monitor.TemplateErrors.counter = 0
+func Reset() {
+    Status.VHosts.counter = 0
+    Status.SslVHosts.counter = 0
+    Status.NonSslVHosts.counter = 0
+    Status.FailedVHosts.counter = 0
+    Status.FailedSslVHosts.counter = 0
+    Status.NoCertSslVHosts.counter = 0
+    Status.SslVHostsCertFail.counter = 0
+    Status.ConfigErrors.counter = 0
+    Status.TemplateErrors.counter = 0
 }
 
-func (monitor *Monitor) GetErrors() int {
-    return int(monitor.ConfigErrors.counter+monitor.TemplateErrors.counter)
+func GetErrors() int {
+    return int(Status.ConfigErrors.counter+Status.TemplateErrors.counter)
 }
 
-func (monitor *Monitor) IncVHosts() {
-    monitor.VHosts.counter++
+func IncVHosts() {
+    Status.VHosts.counter++
 }
 
-func (monitor *Monitor) IncSslVHosts() {
-    monitor.SslVHosts.counter++
+func IncSslVHosts() {
+    Status.SslVHosts.counter++
 }
 
-func (monitor *Monitor) IncNonSslVHosts() {
-    monitor.NonSslVHosts.counter++
+func IncNonSslVHosts() {
+    Status.NonSslVHosts.counter++
 }
 
-func (monitor *Monitor) IncFailedVHosts() {
-    monitor.FailedVHosts.counter++
-    monitor.ConfigErrors.counter++
+func IncFailedVHosts() {
+    Status.FailedVHosts.counter++
+    Status.ConfigErrors.counter++
 }
 
-func (monitor *Monitor) IncFailedSslVHosts() {
-    monitor.FailedSslVHosts.counter++
-    monitor.ConfigErrors.counter++
+func IncFailedSslVHosts() {
+    Status.FailedSslVHosts.counter++
+    Status.ConfigErrors.counter++
 }
 
-func (monitor *Monitor) IncNoCertSslVHosts() {
-    monitor.NoCertSslVHosts.counter++
-    monitor.ConfigErrors.counter++
+func IncNoCertSslVHosts() {
+    Status.NoCertSslVHosts.counter++
+    Status.ConfigErrors.counter++
 }
 
-func (monitor *Monitor) IncSslVHostsCertFail() {
-    monitor.SslVHostsCertFail.counter++
-    monitor.ConfigErrors.counter++
+func IncSslVHostsCertFail() {
+    Status.SslVHostsCertFail.counter++
+    Status.ConfigErrors.counter++
 }
 
-func (monitor *Monitor) IncTemplateErrors() {
-    monitor.TemplateErrors.counter++
-    monitor.ConfigErrors.counter++
+func IncTemplateErrors() {
+    Status.TemplateErrors.counter++
+    Status.ConfigErrors.counter++
 }
 
 func (monitor *Monitor) Describe(ch chan<- *prometheus.Desc) {

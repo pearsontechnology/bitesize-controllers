@@ -86,7 +86,7 @@ func WriteCustomErrorPages(virtualHosts []*VirtualHost) error {
 
 func WriteConfig(virtualHosts []*VirtualHost) error {
 
-    var payload = TemplatePayload{Vhosts: virtualHosts, Errors: monitor.Status.GetErrors()}
+    var payload = TemplatePayload{Vhosts: virtualHosts, Errors: monitor.GetErrors()}
 
     // Needs to split into separate files
     log.Info("Generating config")
@@ -100,11 +100,11 @@ func WriteConfig(virtualHosts []*VirtualHost) error {
 
     if w, err := os.Create(ConfigPath + "/nginx.conf"); err != nil {
         log.Errorf("Error writing config: %s", err.Error())
-        monitor.Status.IncTemplateErrors()
+        monitor.IncTemplateErrors()
         return err
     } else if err := tmpl.Execute(w, payload); err != nil {
         log.Errorf("Error generating template: %s", err.Error())
-        monitor.Status.IncTemplateErrors()
+        monitor.IncTemplateErrors()
         return err
     }
 

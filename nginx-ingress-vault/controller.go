@@ -24,6 +24,7 @@ import (
 
     "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/nginx"
     "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
+    "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/version"
     vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
     k8s "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/kubernetes"
 
@@ -35,8 +36,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
     "net/http"
 )
-
-const version = "1.9.11"
 
 func main() {
 
@@ -55,7 +54,7 @@ func main() {
         log.Fatal(http.ListenAndServe(":8080", nil))
     }()
 
-    log.Infof("Ingress Controller version: %v", version)
+    log.Infof("Ingress Controller version: %v", version.Version)
 
     v := os.Getenv("RELOAD_FREQUENCY")
     reloadFrequency, err := time.ParseDuration(v)
@@ -118,16 +117,16 @@ func main() {
         var virtualHosts = []*nginx.VirtualHost{}
 
         // Reset prometheus counters
-        monitor.Status.Reset()
+        monitor.Reset()
 
         for _, ingress := range ingresses.Items {
             vhost,_ := nginx.NewVirtualHost(ingress, vault)
-            monitor.Status.IncVHosts()
+            monitor.IncVHosts()
             vhost.CollectPaths()
 
             if err = vhost.Validate(); err != nil {
                 log.Errorf("Ingress %s failed validation: %s", vhost.Name, err.Error() )
-                monitor.Status.IncFailedVHosts()
+                monitor.IncFailedVHosts()
                 continue
             }
 
