@@ -9,11 +9,17 @@ import (
 
     "text/template"
     log "github.com/Sirupsen/logrus"
+    "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
 )
 
 var ConfigPath = "/etc/nginx"
+var DefaultRootPath = "/usr/share/nginx/html"
 var Command = "nginx"
 
+type TemplatePayload struct {
+    Vhosts []*VirtualHost
+    Errors int
+}
 
 func Start() error {
     nginxArgs := []string{
@@ -79,6 +85,9 @@ func WriteCustomErrorPages(virtualHosts []*VirtualHost) error {
 }
 
 func WriteConfig(virtualHosts []*VirtualHost) error {
+
+    var payload = TemplatePayload{Vhosts: virtualHosts, Errors: monitor.GetErrors()}
+
     // Needs to split into separate files
     log.Info("Generating config")
     debug := os.Getenv("DEBUG")
@@ -91,12 +100,13 @@ func WriteConfig(virtualHosts []*VirtualHost) error {
 
     if w, err := os.Create(ConfigPath + "/nginx.conf"); err != nil {
         log.Errorf("Error writing config: %s", err.Error())
+        monitor.IncTemplateErrors()
         return err
-    } else if err := tmpl.Execute(w, virtualHosts); err != nil {
+    } else if err := tmpl.Execute(w, payload); err != nil {
         log.Errorf("Error generating template: %s", err.Error())
+        monitor.IncTemplateErrors()
         return err
     }
-
 
     if debug  == "true" {
         conf, _ := ioutil.ReadFile(ConfigPath + "/nginx.conf")

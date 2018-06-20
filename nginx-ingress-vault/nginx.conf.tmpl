@@ -45,8 +45,12 @@ http {
     ssl_certificate /etc/nginx/certs/localhost.crt;
     ssl_certificate_key /etc/nginx/certs/localhost.key;
 
-    listen   80 default_server;
+    listen 80 default_server;
 
+    location /healthz {
+        {{ if eq .Errors 0 }}return 200;
+        {{ else }}return 500;{{ end }}
+    }
     location / {
       root   /usr/share/nginx/html;
       index index.html index.htm;
@@ -64,7 +68,7 @@ http {
       stub_status on;
     }
   }
-{{range $i := .}}
+{{range $i := .Vhosts}}
 {{if $i.Host}}
   {{if $i.BlueGreen}}
   {{range $path := $i.Paths}}
@@ -147,5 +151,5 @@ http {
     {{end}}{{/* range $path := $i.Paths */}}
   }
 {{end}}{{/* if $i.Host */}}
-{{end}}{{/* range $i := . */}}
+{{end}}{{/* range $i := .Vhosts */}}
 }

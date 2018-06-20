@@ -23,15 +23,19 @@ import (
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
     "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/nginx"
+    "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
+    "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/version"
     vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
     k8s "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/kubernetes"
 
     "github.com/quipo/statsd"
 
     log "github.com/Sirupsen/logrus"
-)
 
-const version = "1.9.10"
+    "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+    "net/http"
+)
 
 func main() {
 
@@ -42,7 +46,15 @@ func main() {
         log.SetLevel(log.DebugLevel)
     }
 
-    log.Infof("Ingress Controller version: %v", version)
+    // Prometheus
+    prometheus.MustRegister(&monitor.Status)
+    http.Handle("/metrics", promhttp.Handler())
+    log.Infof("Starting /metrics on port :8080")
+    go func() {
+        log.Fatal(http.ListenAndServe(":8080", nil))
+    }()
+
+    log.Infof("Ingress Controller version: %v", version.Version)
 
     v := os.Getenv("RELOAD_FREQUENCY")
     reloadFrequency, err := time.ParseDuration(v)
@@ -101,14 +113,20 @@ func main() {
             continue
         }
 
+        // Generating new config starts here
         var virtualHosts = []*nginx.VirtualHost{}
+
+        // Reset prometheus counters
+        monitor.Reset()
 
         for _, ingress := range ingresses.Items {
             vhost,_ := nginx.NewVirtualHost(ingress, vault)
+            monitor.IncVHosts()
             vhost.CollectPaths()
 
             if err = vhost.Validate(); err != nil {
                 log.Errorf("Ingress %s failed validation: %s", vhost.Name, err.Error() )
+                monitor.IncFailedVHosts()
                 continue
             }
 
@@ -119,6 +137,10 @@ func main() {
             if len(vhost.Paths) > 0 {
                 virtualHosts = append(virtualHosts, vhost)
             }
+        }
+
+        if len(virtualHosts) == 0 && onKubernetes == true {
+            continue
         }
 
         nginx.WriteConfig(virtualHosts)
