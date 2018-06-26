@@ -144,9 +144,10 @@ metadata:
 spec:
   - Path: secret/mysecrets/*
     Permission: read
+    Period: 24h
 
 ```
 
-In this case a policy 'vault-mysecrets-read-only' would be created and a token for it stashed in my-ns/vault-mysecrets-read-only:vault-mysecrets-read-only. The default TTL for the token is 24h.
+In this case a policy 'vault-mysecrets-read-only' would be created and a periodic token for it stashed in my-ns/vault-mysecrets-read-only:vault-mysecrets-read-only. A TTL may be specified in place of Period, the default TTL in this case is 720h. If Period is specified however, TTL is ignored.
 
 ## End

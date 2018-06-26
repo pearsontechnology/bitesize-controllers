@@ -17,6 +17,8 @@ type VaultPolicy struct {
 type VaultPolicySpec struct {
     Path       string `json:"path"`
 	Permission string `json:"permission"`
+    TTL        string `json:"ttl"`
+    Period     string `json:"period"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
