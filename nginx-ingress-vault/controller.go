@@ -79,18 +79,15 @@ func main() {
 
     // Controller loop
     for {
-
-        if !vault.Enabled {
-            vault, err = vlt.NewVaultReader()
-            if err != nil {
-                time.Sleep(reloadFrequency)
-                continue
-            }
-            if vault.Enabled {
-                go vault.RenewToken()
-            }
+        vault, err = vlt.NewVaultReader()
+        if err != nil {
+            time.Sleep(reloadFrequency)
+            continue
         }
-
+        if vault.Enabled {
+            go vault.RenewToken()
+        }
+        
         if !vault.Ready() {
             vault, err = vlt.NewVaultReader()
 
