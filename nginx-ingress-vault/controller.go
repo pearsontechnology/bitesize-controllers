@@ -73,21 +73,12 @@ func main() {
     known := &v1beta1.IngressList{}
 
     vault, _ := vlt.NewVaultReader()
-    if vault.Enabled {
-        go vault.RenewToken()
-    }
+    stopRenew := make(chan bool)
+    go vault.RenewToken(stopRenew)
 
     // Controller loop
     for {
-        vault, err = vlt.NewVaultReader()
-        if err != nil {
-            time.Sleep(reloadFrequency)
-            continue
-        }
-        if vault.Enabled {
-            go vault.RenewToken()
-        }
-        
+
         if !vault.Ready() {
             vault, err = vlt.NewVaultReader()
 
@@ -98,6 +89,29 @@ func main() {
         }
 
         time.Sleep(reloadFrequency)
+
+        if vault.Enabled {
+            log.Debugf("Comparing client token to k8s secret.")
+            same, err := vault.CompareToken()
+            if err != nil {
+                log.Errorf("Error calling CompareToken: %s", err)
+                time.Sleep(reloadFrequency)
+                continue
+            }
+            if !same {
+                log.Infof("New token detected in k8s secret, reloading client.")
+                vault, err = vlt.NewVaultReader()
+                if err != nil {
+                    log.Errorf("Error calling CompareToken: %s", err)
+                    time.Sleep(reloadFrequency)
+                    continue
+                } else {
+                    stopRenew <- true
+                    go vault.RenewToken(stopRenew)
+                }
+            }
+
+        }
 
         ingresses, err := k8s.GetIngresses(onKubernetes)
 
