@@ -123,7 +123,7 @@ func NewVaultReader() (*VaultReader, error) {
 
     refreshInterval, err := strconv.Atoi(refreshFlag)
     if err != nil {
-        refreshInterval = 1
+        refreshInterval = 10
     }
 
     if address == "" || token == "" {
