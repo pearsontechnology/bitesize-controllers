@@ -88,30 +88,15 @@ func main() {
             continue
         }
 
-        time.Sleep(reloadFrequency)
+        vault, err = vault.CheckSecretToken(stopRenew)
 
-        if vault.Enabled {
-            log.Debugf("Comparing client token to k8s secret.")
-            same, err := vault.CompareToken()
-            if err != nil {
-                log.Errorf("Error calling CompareToken: %s", err)
-                time.Sleep(reloadFrequency)
-                continue
-            }
-            if !same {
-                log.Infof("New token detected in k8s secret, reloading client.")
-                vault, err = vlt.NewVaultReader()
-                if err != nil {
-                    log.Errorf("Error calling CompareToken: %s", err)
-                    time.Sleep(reloadFrequency)
-                    continue
-                } else {
-                    stopRenew <- true
-                    go vault.RenewToken(stopRenew)
-                }
-            }
-
+        if err != nil {
+            log.Errorf("Error calling CheckSecretToken: %s", err)
+            time.Sleep(reloadFrequency)
+            continue
         }
+
+        time.Sleep(reloadFrequency)
 
         ingresses, err := k8s.GetIngresses(onKubernetes)
 
@@ -125,29 +110,15 @@ func main() {
         }
 
         // Generating new config starts here
-        var virtualHosts = []*nginx.VirtualHost{}
 
         // Reset prometheus counters
         monitor.Reset()
 
-        for _, ingress := range ingresses.Items {
-            vhost,_ := nginx.NewVirtualHost(ingress, vault)
-            monitor.IncVHosts()
-            vhost.CollectPaths()
+        virtualHosts := nginx.ProcessIngresses(ingresses, vault)
 
-            if err = vhost.Validate(); err != nil {
-                log.Errorf("Ingress %s failed validation: %s", vhost.Name, err.Error() )
-                monitor.IncFailedVHosts()
-                continue
-            }
-
-            if err = vhost.CreateVaultCerts(); err != nil {
-                log.Errorf("%s\n", err.Error() )
-                vhost.HTTPSEnabled = false
-            }
-            if len(vhost.Paths) > 0 {
-                virtualHosts = append(virtualHosts, vhost)
-            }
+        if err != nil {
+            log.Errorf("Error processing ingresses: %v", err)
+            continue
         }
 
         if len(virtualHosts) == 0 && onKubernetes == true {

@@ -12,6 +12,8 @@ import (
     "regexp"
     "k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 
+    log "github.com/Sirupsen/logrus"
+
     "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
     vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
 )
@@ -87,6 +89,34 @@ func (vhost *VirtualHost) CollectPaths() {
             vhost.appendService(p.Backend.ServiceName, p)
         }
     }
+}
+
+func ProcessIngresses(ingresses *v1beta1.IngressList, vault *vlt.VaultReader) ([]*VirtualHost) {
+
+    var err error
+    var virtualHosts = []*VirtualHost{}
+
+    for _, ingress := range ingresses.Items {
+
+        vhost,_ := NewVirtualHost(ingress, vault)
+        monitor.IncVHosts()
+        vhost.CollectPaths()
+
+        if err = vhost.Validate(); err != nil {
+            log.Errorf("Ingress %s failed validation: %s", vhost.Name, err.Error() )
+            monitor.IncFailedVHosts()
+            continue
+        }
+
+        if err = vhost.CreateVaultCerts(); err != nil {
+            log.Errorf("%s\n", err.Error() )
+            vhost.HTTPSEnabled = false
+        }
+        if len(vhost.Paths) > 0 {
+            virtualHosts = append(virtualHosts, vhost)
+        }
+    }
+    return virtualHosts
 }
 
 func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.HTTPIngressPath) {
