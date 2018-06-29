@@ -17,6 +17,7 @@ import (
 
 const vaultDefaultRetries = 5
 const vaultDefaultTimeout = "30s" //cumulative
+const vaultDefaultTokenRefreshInterval = 10
 
 type VaultReader struct {
     Enabled bool
@@ -67,7 +68,7 @@ func getToken() (token string, err error) {
         //secret[name] = string(data)
         if name == secretKey {
             token = strings.TrimSpace(string(data))
-            log.Infof("Found VAULT_TOKEN_SECRET secret: %s", name)
+            log.Debugf("Found VAULT_TOKEN_SECRET secret: %s", name)
         }
     }
     _, err = uuid.Parse(token)
@@ -75,6 +76,66 @@ func getToken() (token string, err error) {
         log.Errorf("Error parsing VAULT_TOKEN_SECRET: %v", token)
     }
     return token, err
+}
+
+func (r *VaultReader) CompareToken() (compare bool, err error) {
+    existingToken := r.Client.Token()
+    secretToken, err := getToken()
+    //log.Debugf("Comparing existingToken: %s with secretToken: %s ", existingToken, secretToken)
+    if err != nil {
+        log.Errorf("Error retrieving token from k8s secret: %v", err)
+        return true, err
+    }
+
+    if existingToken == secretToken {
+        return true, nil
+    } else {
+        return false, nil
+    }
+}
+
+func (r *VaultReader) CheckSecretToken() (*VaultReader, error) {
+
+    log.Debugf("Comparing client token to k8s secret.")
+    same, err := r.CompareToken()
+    if err != nil {
+        log.Errorf("Error calling CompareToken: %s", err)
+        return r, err
+    }
+    if !same {
+        log.Infof("New token detected in k8s secret, reloading client.")
+        nr, err := NewVaultReader()
+        if err != nil {
+            log.Errorf("Error calling CompareToken: %s", err)
+            return r, err
+        } else {
+            r = nr
+        }
+    }
+    return r, err
+}
+
+// RenewToken renews vault's token every TokenRefreshInterval
+func (r *VaultReader) RenewToken() {
+    log.Debugf("Start RenewToken func.")
+    for _ = range r.TokenRefreshInterval.C {
+        token, err := getToken()
+        //log.Debugf("Renewing token: %s ", r.Client.Token())
+        if err == nil {
+            r.Client.SetToken(token)
+        } else {
+            log.Errorf("Error retrieving Vault token %v", err)
+        }
+
+        tokenPath := "/auth/token/renew-self"
+        tokenData, err := r.Client.Logical().Write(tokenPath, nil)
+        if err != nil || tokenData == nil {
+            log.Errorf("Error renewing Vault token %v, %v", err, tokenData)
+        } else {
+            log.Infof("Successfully renewed Vault token.\n")
+        }
+
+    }
 }
 
 func NewVaultReader() (*VaultReader, error) {
@@ -107,7 +168,7 @@ func NewVaultReader() (*VaultReader, error) {
 
     refreshInterval, err := strconv.Atoi(refreshFlag)
     if err != nil {
-        refreshInterval = 10
+        refreshInterval = vaultDefaultTokenRefreshInterval
     }
 
     if address == "" || token == "" {
@@ -168,21 +229,6 @@ func (r *VaultReader) Ready() bool {
         return false
     }
     return !status.Sealed
-}
-
-// RenewToken renews vault's token every TokenRefreshInterval
-func (r *VaultReader) RenewToken() {
-    tokenPath := "/auth/token/renew-self"
-
-    for _ = range r.TokenRefreshInterval.C {
-        tokenData, err := r.Client.Logical().Write(tokenPath, nil)
-
-        if err != nil || tokenData == nil {
-            log.Errorf("Error renewing Vault token %v, %v", err, tokenData)
-        } else {
-            log.Infof("Successfully renewed Vault token.\n")
-        }
-    }
 }
 
 func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {

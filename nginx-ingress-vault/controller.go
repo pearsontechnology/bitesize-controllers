@@ -73,26 +73,24 @@ func main() {
     known := &v1beta1.IngressList{}
 
     vault, _ := vlt.NewVaultReader()
-    if vault.Enabled {
-        go vault.RenewToken()
-    }
+    go vault.RenewToken()
 
     // Controller loop
     for {
-        vault, err = vlt.NewVaultReader()
-        if err != nil {
-            time.Sleep(reloadFrequency)
-            continue
-        }
-        if vault.Enabled {
-            go vault.RenewToken()
-        }
-        
+
         if !vault.Ready() {
             vault, err = vlt.NewVaultReader()
 
             // Reset existing ingress list to allow pull of ssl from vault
             known = &v1beta1.IngressList{}
+            time.Sleep(reloadFrequency)
+            continue
+        }
+
+        vault, err = vault.CheckSecretToken()
+
+        if err != nil {
+            log.Errorf("Error calling CheckSecretToken: %s", err)
             time.Sleep(reloadFrequency)
             continue
         }
@@ -111,29 +109,15 @@ func main() {
         }
 
         // Generating new config starts here
-        var virtualHosts = []*nginx.VirtualHost{}
 
         // Reset prometheus counters
         monitor.Reset()
 
-        for _, ingress := range ingresses.Items {
-            vhost,_ := nginx.NewVirtualHost(ingress, vault)
-            monitor.IncVHosts()
-            vhost.CollectPaths()
+        virtualHosts := nginx.ProcessIngresses(ingresses, vault)
 
-            if err = vhost.Validate(); err != nil {
-                log.Errorf("Ingress %s failed validation: %s", vhost.Name, err.Error() )
-                monitor.IncFailedVHosts()
-                continue
-            }
-
-            if err = vhost.CreateVaultCerts(); err != nil {
-                log.Errorf("%s\n", err.Error() )
-                vhost.HTTPSEnabled = false
-            }
-            if len(vhost.Paths) > 0 {
-                virtualHosts = append(virtualHosts, vhost)
-            }
+        if err != nil {
+            log.Errorf("Error processing ingresses: %v", err)
+            continue
         }
 
         if len(virtualHosts) == 0 && onKubernetes == true {
