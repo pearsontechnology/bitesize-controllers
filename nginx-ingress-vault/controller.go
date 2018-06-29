@@ -73,8 +73,7 @@ func main() {
     known := &v1beta1.IngressList{}
 
     vault, _ := vlt.NewVaultReader()
-    stopRenew := make(chan bool)
-    go vault.RenewToken(stopRenew)
+    go vault.RenewToken()
 
     // Controller loop
     for {
@@ -88,7 +87,7 @@ func main() {
             continue
         }
 
-        vault, err = vault.CheckSecretToken(stopRenew)
+        vault, err = vault.CheckSecretToken()
 
         if err != nil {
             log.Errorf("Error calling CheckSecretToken: %s", err)
