@@ -64,7 +64,7 @@ http {
       vhost_traffic_status_display;
       vhost_traffic_status_display_format html;
       allow 127.0.0.1/32;
-      allow {{ getenv VTSWL "127.0.0.1/32" }};
+      allow {{ getenv "VTSWL" "127.0.0.1/32" }};
       deny all;
     }
     location /nginx_status { # Used by sysdig-agent only. Exclude in Nginx logs.
