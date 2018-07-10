@@ -144,11 +144,6 @@ STOPSIGNAL SIGQUIT
 ## Bitesize
 
 
-COPY controller /
-COPY default.conf /etc/nginx/nginx.conf
-COPY /run.sh /usr/bin/run.sh
-RUN chmod +x /usr/bin/run.sh
-COPY nginx.conf.tmpl /etc/nginx/
 # cops-165
 COPY error_page.tmpl /etc/nginx/
 # To overide the default nginx page
@@ -157,5 +152,11 @@ COPY pearson_logo.png /usr/share/nginx/html/
 COPY favicon.ico /usr/share/nginx/html/
 # BITE-1345
 COPY dhparam.pem /etc/nginx/certs/
+
+COPY default.conf /etc/nginx/nginx.conf
+COPY controller /
+COPY /run.sh /usr/bin/run.sh
+RUN chmod +x /usr/bin/run.sh
+COPY nginx.conf.tmpl /etc/nginx/
 
 CMD ["/usr/bin/run.sh"]
