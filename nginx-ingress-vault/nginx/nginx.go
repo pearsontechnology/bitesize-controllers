@@ -57,6 +57,7 @@ func Template() (*template.Template, error) {
       "replace": func(str string, src string, dst string )  string {
         return strings.Replace(str, src, dst, -1)
       },
+      "getenv": getenv,
     }
     return template.New("nginx.conf.tmpl").Funcs(fm).ParseFiles("/etc/nginx/nginx.conf.tmpl")
 

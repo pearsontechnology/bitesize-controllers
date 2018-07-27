@@ -36,6 +36,8 @@ http {
   error_log /dev/stderr error;
   access_log /dev/stdout proxied_combined;
 
+  vhost_traffic_status_zone;
+
   server {
 
     # BITE-1368 Remove NGINX version number
@@ -57,6 +59,12 @@ http {
     }
     location /ELBHealthCheck {
       root /var/www/healthcheck/;
+    }
+    location /vts {
+      vhost_traffic_status_display;
+      vhost_traffic_status_display_format html;
+      allow 127.0.0.1/32;
+      deny all;
     }
     location /nginx_status { # Used by sysdig-agent only. Exclude in Nginx logs.
       stub_status on;
