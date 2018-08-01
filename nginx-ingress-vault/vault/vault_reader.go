@@ -227,6 +227,7 @@ func (r *VaultReader) Ready() bool {
 
     if err != nil || status == nil {
         log.Errorf("Error retrieving vault status: %v, %v", status, err.Error())
+        r.Enabled = false
         return false
     }
     return !status.Sealed
@@ -234,6 +235,10 @@ func (r *VaultReader) Ready() bool {
 
 func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
     var e, err error
+    if !r.Enabled {
+        log.Warnf("Vault disabled, aborting retrieve secrets")
+        return nil, nil, e
+    }
 
     vaultPath := "secret/ssl/" + hostname
 
@@ -246,7 +251,7 @@ func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
 
     errcheck := func(err error) bool {
         if err != nil {
-            log.Errorf("retrying retrieve secrets: %d", err.Error())
+            log.Errorf("Retrying retrieve secrets: %d", err.Error())
             return true
         }
         return false
@@ -261,6 +266,7 @@ func (r *VaultReader) GetSecretsForHost(hostname string) (*Cert, *Cert, error) {
 
     if err != nil {
         e = fmt.Errorf("Error retrieving secret for %v: %v", hostname, err.Error())
+        r.Enabled = false
         return nil, nil, e
     }
 

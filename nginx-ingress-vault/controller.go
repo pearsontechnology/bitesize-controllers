@@ -80,14 +80,18 @@ func main() {
 
         if !vault.Ready() {
             vault, err = vlt.NewVaultReader()
-
-            // Reset existing ingress list to allow pull of ssl from vault
-            known = &v1beta1.IngressList{}
-            time.Sleep(reloadFrequency)
-            continue
+            if err != nil{
+                vault.Enabled = false
+            } else {
+                // Reset existing ingress list to allow pull of ssl from vault
+                vault.Enabled = true
+                known = &v1beta1.IngressList{}
+                time.Sleep(reloadFrequency)
+            }
         }
-
-        vault, err = vault.CheckSecretToken()
+        if vault.Enabled == true {
+            vault, err = vault.CheckSecretToken()
+        }
 
         if err != nil {
             log.Errorf("Error calling CheckSecretToken: %s", err)

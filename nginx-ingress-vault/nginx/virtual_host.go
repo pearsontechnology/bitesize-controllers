@@ -108,7 +108,7 @@ func ProcessIngresses(ingresses *v1beta1.IngressList, vault *vlt.VaultReader) ([
             continue
         }
 
-        if err = vhost.CreateVaultCerts(); err != nil {
+        if err = vhost.CreateVaultCerts(vault); err != nil {
             log.Errorf("%s\n", err.Error() )
             vhost.HTTPSEnabled = false
         }
@@ -132,9 +132,10 @@ func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.
 
 // CreateVaultCerts gets certificates (private and crt) from vault
 // and writes them to nginx ssl config path. Returns error on failure
-func (vhost *VirtualHost) CreateVaultCerts() error {
-    if !vhost.Vault.Enabled {
+func (vhost *VirtualHost) CreateVaultCerts(vault *vlt.VaultReader) error {
+    if !vhost.Vault.Enabled || !vault.Enabled {
         return fmt.Errorf("Vault disabled for %s", vhost.Host)
+        vhost.HTTPSEnabled = false
     }
 
     if !vhost.HTTPSEnabled {
