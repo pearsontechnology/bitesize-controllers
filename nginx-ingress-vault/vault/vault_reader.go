@@ -117,24 +117,25 @@ func (r *VaultReader) CheckSecretToken() (*VaultReader, error) {
 
 // RenewToken renews vault's token every TokenRefreshInterval
 func (r *VaultReader) RenewToken() {
-    log.Debugf("Start RenewToken func.")
-    for _ = range r.TokenRefreshInterval.C {
-        token, err := getToken()
-        //log.Debugf("Renewing token: %s ", r.Client.Token())
-        if err == nil {
-            r.Client.SetToken(token)
-        } else {
-            log.Errorf("Error retrieving Vault token %v", err)
-        }
+    if r.Enabled {
+        log.Debugf("Start RenewToken func.")
+        for _ = range r.TokenRefreshInterval.C {
+            token, err := getToken()
+            //log.Debugf("Renewing token: %s ", r.Client.Token())
+            if err == nil {
+                r.Client.SetToken(token)
+            } else {
+                log.Errorf("Error retrieving Vault token %v", err)
+            }
 
-        tokenPath := "/auth/token/renew-self"
-        tokenData, err := r.Client.Logical().Write(tokenPath, nil)
-        if err != nil || tokenData == nil {
-            log.Errorf("Error renewing Vault token %v, %v", err, tokenData)
-        } else {
-            log.Infof("Successfully renewed Vault token.\n")
+            tokenPath := "/auth/token/renew-self"
+            tokenData, err := r.Client.Logical().Write(tokenPath, nil)
+            if err != nil || tokenData == nil {
+                log.Errorf("Error renewing Vault token %v, %v", err, tokenData)
+            } else {
+                log.Infof("Successfully renewed Vault token.\n")
+            }
         }
-
     }
 }
 
