@@ -184,9 +184,9 @@ if [[ $BUILD == true ]]; then
   echo "Building version: "$VERSION
 
   if [[ $DRY_RUN == true ]]; then
-    echo go build "$VERSION_SOURCE_FILE"
+    echo GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build "$VERSION_SOURCE_FILE"
   else
-    go build "$VERSION_SOURCE_FILE"
+    GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build "$VERSION_SOURCE_FILE"
   fi
 fi
 
