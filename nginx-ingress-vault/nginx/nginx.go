@@ -31,7 +31,7 @@ func Start() error {
         "reload",
     }
     searchArgs := strings.Join(nginxArgs," ")
-    searchcmd := "ps -aux | grep \"" +  Command + " " + searchArgs + "\" | grep -v grep"
+    searchcmd := "ps aux | grep \"" +  Command + " " + searchArgs + "\" | grep -v grep"
     err := exec.Command("sh","-c",searchcmd).Run()
     if err == nil {
         return exec.Command(Command, reloadArgs...).Run()
