@@ -8,6 +8,5 @@ then
   mkdir $GOPATH
 fi
 
-go get github.com/pearsontechnology/bitesize-controllers
-cd $GOPATH/src/github.com/pearsontechnology/bitesize-controllers/vault-controller
+cd /build
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build controller.go
