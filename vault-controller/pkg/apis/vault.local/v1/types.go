@@ -12,6 +12,8 @@ type VaultPolicy struct {
     metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec               []VaultPolicySpec `json:"spec"`
+    Renew             string `json:"renew"`
+    Recreate          string `json:"recreate"`
 }
 
 type VaultPolicySpec struct {

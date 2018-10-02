@@ -143,6 +143,20 @@ func startCRD(stopchan chan bool, vaultAddress string, vaultToken string) {
                     log.Debugf("Policy %s token generated: %v", policy.Name, token)
                     log.Debugf("Generating secret %v/%v:%v for token: %v", policy.Namespace, policy.Name, policy.Name, token)
                     k8s.PutSecret(policy.Name, policy.Name, token, policy.Namespace)
+                } else {
+                    log.Debugf("Policy %s exists, retrieving token from secret: %v", policy.Name, policy.Name)
+                    token = k8s.GetSecret(policy.Name, policy.Name, policy.Namespace)
+                    if !vault.ValidateToken(token) {
+                        log.Debugf("Token invalid: %v", token)
+                        continue
+                    } else if len(policy.Renew) > 1 {
+                        crdVaultClient.PolicyRenewToken(policy, token)
+                    } else if len(policy.Recreate) > 1 {
+                        crdVaultClient.PolicyRecreateToken(policy, token)
+                    } else {
+                        log.Debugf("No action required: %v", policy.Name)
+                    }
+
                 }
             }
         }

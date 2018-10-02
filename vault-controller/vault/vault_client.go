@@ -4,27 +4,27 @@ import (
     "strings"
     "errors"
     "time"
-    vault "github.com/hashicorp/vault/api"
-    vaultpolicy "github.com/pearsontechnology/bitesize-controllers/vault-controller/pkg/apis/vault.local/v1"
+    vaultapi "github.com/hashicorp/vault/api"
     log "github.com/Sirupsen/logrus"
 )
 
 type VaultClient struct {
-    Client *vault.Client
+    Client *vaultapi.Client
 }
 
 const initWait = "5s"
 
+// NewVaultClient returns a vault client with DefaultConfig, address and token
 func NewVaultClient(address string, token string) (*VaultClient, error) {
 
-    config := vault.DefaultConfig()
+    config := vaultapi.DefaultConfig()
     config.Address = address
     if address == "" {
         log.Errorf("Vault not configured")
         return nil, nil
     }
 
-    client, err := vault.NewClient(config)
+    client, err := vaultapi.NewClient(config)
     if err != nil {
         log.Errorf("Vault config failed.")
         return &VaultClient{nil}, err
@@ -51,7 +51,7 @@ func (c *VaultClient) InitStatus() (initState bool, err error) {
 
 // Init with defaults
 func (c *VaultClient) Init(shares int, threshold int) (token string, keys []string, err error) {
-    initReq := &vault.InitRequest {
+    initReq := &vaultapi.InitRequest {
                 SecretShares: shares,
                 SecretThreshold: threshold,
             }
@@ -85,6 +85,7 @@ func (c *VaultClient) SealStatus() (sealState bool, err error) {
     }
 }
 
+// Unseal unseals instance using a comma-delimited set of unseal keys
 func (c *VaultClient) Unseal(unsealKeys string) (sealState bool, err error) {
 
     for _, key := range strings.Split(unsealKeys, ",") {
@@ -119,52 +120,4 @@ func (c *VaultClient) LeaderStatus() (leaderState bool, err error) {
         log.Debugf("LeaderStatus: %v", status)
         return status.IsSelf, err
     }
-}
-
-// CRUD Policy functions
-func (c *VaultClient) CreatePolicy(policy vaultpolicy.VaultPolicy) (token string, err error) {
-    log.Debugf("CreatePolicy: %v", policy)
-
-    p, err := c.Client.Sys().GetPolicy(policy.Name)
-    if p != "" {
-        log.Infof("Policy already exists: %v", policy.Name)
-        return "", nil
-    }
-
-    var rules string
-    for _, s := range policy.Spec {
-        rules = rules + "path \"" + s.Path + "\" { capabilities = [\"" + s.Permission + "\"] }"
-    }
-    err = c.Client.Sys().PutPolicy(policy.Name, rules) //https://godoc.org/github.com/hashicorp/vault/api#Sys.PutPolicy
-    if err != nil {
-        log.Errorf("Error creating Policy %v", policy.Name)
-        return "", err
-    }
-    log.Infof("CreatePolicy created policy: %v", policy.Name)
-    var policies []string
-
-    policies = append(policies, policy.Name)
-
-    opts := &vault.TokenCreateRequest{
-        Policies: policies,
-        DisplayName: policy.Name}
-
-    for _, s := range policy.Spec {
-        if len(s.Period) > 0 {
-            opts.Period = s.Period
-        } else if len(s.TTL) > 0 {
-            opts.TTL = s.TTL
-        }
-    }
-
-    log.Infof("Creating token for policy: %v", policy.Name )
-    log.Debugf("CreatePolicy token opts: %v", opts)
-
-    tokenData, err := c.Client.Auth().Token().Create(opts) //https://godoc.org/github.com/hashicorp/vault/api#TokenAuth.Create
-    if err != nil {
-        log.Errorf("Error creating Token %v", policy.Name)
-        return "", err
-    }
-    token = tokenData.Auth.ClientToken
-    return token, err
 }
