@@ -8,8 +8,7 @@ RUN dep ensure --vendor-only
 COPY . ./
 RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build controller.go
 
-#FROM alpine:3.5
-FROM 815492460363.dkr.ecr.us-east-1.amazonaws.com/bitesize/image-base:al2
+FROM 815492460363.dkr.ecr.us-east-1.amazonaws.com/bitesize/image-base:latest
 COPY --from=builder /go/src/github.com/pearsontechnology/bitesize-controllers/vault-controller/controller .
 
 LABEL maintainer "martin.devlin@pearson.com"
