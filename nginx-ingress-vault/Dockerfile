@@ -1,8 +1,18 @@
-FROM alpine:3.8
+# BUILD
+FROM golang:1.10 AS builder
+WORKDIR /usr/src
+COPY id_rsa /root/.ssh/id_rsa
+RUN ssh-keyscan github.com >> ~/.ssh/known_hosts && chmod 600 /root/.ssh/id_rsa && eval `ssh-agent -s` && ssh-add /root/.ssh/id_rsa
+RUN git clone -b BITE-4895 git@github.com:pearsontechnology/bitesize-controllers.git
 
+# DEPLOY
+FROM 815492460363.dkr.ecr.us-east-1.amazonaws.com/bitesize/image-base:latest
+COPY --from=builder /usr/src /usr/src
+COPY files/nginx_ingress_vault_controller_amd64_linux /controller
+RUN chmod +x /controller
+WORKDIR /usr/src/bitesize-controllers/nginx-ingress-vault
 ENV NGINX_VERSION 1.12.2
 ENV VTS_VERSION 0.1.18
-
 RUN GPG_KEYS=B0F4253373F8F6F510D42178520A9993A1C052F8 \
                 && CONFIG="\
 		--prefix=/etc/nginx \
@@ -134,29 +144,19 @@ RUN GPG_KEYS=B0F4253373F8F6F510D42178520A9993A1C052F8 \
 	# forward request and error logs to docker log collector
 	&& ln -sf /dev/stdout /var/log/nginx/access.log \
 	&& ln -sf /dev/stderr /var/log/nginx/error.log
-
-
-EXPOSE 80
-
-STOPSIGNAL SIGQUIT
-
-
-## Bitesize
-
-
-# cops-165
-COPY error_page.tmpl /etc/nginx/
+# COPS-165
+RUN cp error_page.tmpl /etc/nginx/
 # To overide the default nginx page
-COPY index.html /usr/share/nginx/html/index.html
-COPY pearson_logo.png /usr/share/nginx/html/
-COPY favicon.ico /usr/share/nginx/html/
+RUN cp index.html /usr/share/nginx/html/index.html
+RUN cp pearson_logo.png /usr/share/nginx/html/
+RUN cp favicon.ico /usr/share/nginx/html/
 # BITE-1345
-COPY dhparam.pem /etc/nginx/certs/
-
-COPY default.conf /etc/nginx/nginx.conf
-COPY controller /
-COPY /run.sh /usr/bin/run.sh
+RUN mkdir -p /etc/nginx/certs
+RUN cp dhparam.pem /etc/nginx/certs/
+RUN cp default.conf /etc/nginx/nginx.conf
+RUN cp run.sh /usr/bin/run.sh
 RUN chmod +x /usr/bin/run.sh
-COPY nginx.conf.tmpl /etc/nginx/
-
-CMD ["/usr/bin/run.sh"]
+RUN cp nginx.conf.tmpl /etc/nginx/
+EXPOSE 80
+STOPSIGNAL SIGQUIT
+ENTRYPOINT ["/usr/bin/run.sh"]

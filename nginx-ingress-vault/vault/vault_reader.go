@@ -118,6 +118,7 @@ func (r *VaultReader) CheckSecretToken() (*VaultReader, error) {
 // RenewToken renews vault's token every TokenRefreshInterval
 func (r *VaultReader) RenewToken() {
     log.Debugf("Start RenewToken func.")
+    if r.Enabled {
     for _ = range r.TokenRefreshInterval.C {
         token, err := getToken()
         //log.Debugf("Renewing token: %s ", r.Client.Token())
@@ -135,6 +136,7 @@ func (r *VaultReader) RenewToken() {
             log.Infof("Successfully renewed Vault token.\n")
         }
 
+    }
     }
 }
 
