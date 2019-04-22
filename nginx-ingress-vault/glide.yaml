@@ -18,3 +18,13 @@ import:
   - pkg/util/flowcontrol
 - package: github.com/Sirupsen/logrus
   version: ^0.11.0
+- package: github.com/juju/errgo
+- package: github.com/prometheus/client_model
+  subpackages:
+  - go
+- package: github.com/prometheus/common
+  version: v0.3.0
+  subpackages:
+  - expfmt
+  - model
+- package: github.com/prometheus/procfs
