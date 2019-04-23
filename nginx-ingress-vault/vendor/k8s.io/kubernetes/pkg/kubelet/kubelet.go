@@ -2427,8 +2427,28 @@ func (kl *Kubelet) handleMirrorPod(mirrorPod *api.Pod, start time.Time) {
 // a config source.
 func (kl *Kubelet) HandlePodAdditions(pods []*api.Pod) {
 	start := kl.clock.Now()
-	sort.Sort(sliceutils.PodsByCreationTime(pods))
+
+	if utilconfig.DefaultFeatureGate.ExperimentalCriticalPodAnnotation() {
+		// Pass critical pods through admission check first.
+		var criticalPods []*api.Pod
+		var nonCriticalPods []*api.Pod
+		for _, p := range pods {
+			if kubetypes.IsCriticalPod(p) {
+				criticalPods = append(criticalPods, p)
+			} else {
+				nonCriticalPods = append(nonCriticalPods, p)
+			}
+		}
+		sort.Sort(sliceutils.PodsByCreationTime(criticalPods))
+		sort.Sort(sliceutils.PodsByCreationTime(nonCriticalPods))
+		pods = append(criticalPods, nonCriticalPods...)
+
+	} else {
+		sort.Sort(sliceutils.PodsByCreationTime(pods))
+	}
+
 	for _, pod := range pods {
+
 		if kubepod.IsMirrorPod(pod) {
 			kl.podManager.AddPod(pod)
 			kl.handleMirrorPod(pod, start)

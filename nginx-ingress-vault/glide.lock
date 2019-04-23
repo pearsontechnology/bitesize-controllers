@@ -1,10 +1,14 @@
-hash: 761005ad46dc721a814ebb4677aead1ff893a7aca57750bb5deac8fa1eb7db8f
-updated: 2016-12-29T10:15:46.530950218Z
+hash: 43eeb36c47676996d79e30ac65bb96005b0728301650f28053b2309d4c100a22
+updated: 2019-04-22T15:32:44.885353+01:00
 imports:
+- name: github.com/beorn7/perks
+  version: 4b2b341e8d7715fae06375aa633dbb6e91b3fb46
+  subpackages:
+  - quantile
 - name: github.com/blang/semver
   version: 31b736133b98f26d5e078ec9eb591666edfd091f
 - name: github.com/davecgh/go-spew
-  version: 346938d642f2ec3594ed81d874461961cd0faa76
+  version: 8991bc29aa16c548c550c7ff78260e27b9ab7c73
   subpackages:
   - spew
 - name: github.com/docker/distribution
@@ -18,28 +22,36 @@ imports:
   - log
   - swagger
 - name: github.com/fatih/structs
-  version: dc3312cb1a4513a366c4c9e622ad55c32df12ed3
+  version: 878a968ab22548362a09bdb3322f98b00f470d46
 - name: github.com/ghodss/yaml
   version: 73d445a93680fa1a78ae23a5839bad48f32ba1ee
+- name: github.com/giantswarm/retry-go
+  version: d78cea247d5e87d005ff7732f88bc52359afbe19
 - name: github.com/gogo/protobuf
-  version: 84af2615df1ba1d35cc975ba94b64ee67d6c196e
+  version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
   - proto
   - sortkeys
 - name: github.com/golang/glog
   version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+- name: github.com/golang/protobuf
+  version: aa810b61a9c79d51363740d207bb46cf8e620ed5
+  subpackages:
+  - proto
 - name: github.com/google/gofuzz
   version: bbcb9da2d746f8bdbd6a936686a0a6067ada0ec5
+- name: github.com/google/uuid
+  version: d460ce9f8df2e77fb1ba55ca87fafed96c607494
 - name: github.com/hashicorp/errwrap
-  version: 7554cd9344cec97297fa6649b055a8c98c2a1e55
+  version: 8a6fb523712970c966eefc6b39ed2c5e74880354
 - name: github.com/hashicorp/go-cleanhttp
-  version: ad28ea4487f05916463e2423a55166280e8254b5
+  version: d3fcbee8e1810ecee4bdbf415f42f84cfd0e3361
 - name: github.com/hashicorp/go-multierror
-  version: ed905158d87462226a13fe39ddf685ea65f1c11f
+  version: 886a7fbe3eb1c874d46f623bfa70af45f425b3d1
 - name: github.com/hashicorp/go-rootcerts
-  version: 6bb64b370b90e7ef1fa532be9e591a81c3493e00
+  version: 63503fb4e1eca22f9ae0f90b49c5d5538a0e87eb
 - name: github.com/hashicorp/hcl
-  version: d8c773c4cba11b11539e3d45f93daeaa5dcf1fa1
+  version: 65a6292f0157eff210d03ed1bf6c59b190b8b906
   subpackages:
   - hcl/ast
   - hcl/parser
@@ -50,31 +62,55 @@ imports:
   - json/scanner
   - json/token
 - name: github.com/hashicorp/vault
-  version: f4adc7fa960ed8e828f94bc6785bcdbae8d1b263
+  version: 5d8d702f33b5fd965cbe8d6d0728295de813a196
   subpackages:
   - api
   - helper/compressutil
   - helper/jsonutil
+- name: github.com/juju/errgo
+  version: 08cceb5d0b5331634b9826762a8fd53b29b86ad8
 - name: github.com/juju/ratelimit
   version: 77ed1c8a01217656d2080ad51981f6e99adaa177
+- name: github.com/matttproud/golang_protobuf_extensions
+  version: fc2b8d3a73c4867e51861bbdd5ae3c1f0869dd6a
+  subpackages:
+  - pbutil
 - name: github.com/mitchellh/go-homedir
   version: b8bc1bf767474819792c23f32d8286a45736f1c6
 - name: github.com/mitchellh/mapstructure
   version: 740c764bc6149d3f1806231418adb9f52c11bcbf
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
+- name: github.com/prometheus/client_golang
+  version: 65d3a96fbaa7c8c9535d7133d6d98cd50eed4db8
+  subpackages:
+  - prometheus
+  - prometheus/internal
+  - prometheus/promhttp
+- name: github.com/prometheus/client_model
+  version: fd36f4220a901265f90734c3183c5f0c91daa0b8
+  subpackages:
+  - go
+- name: github.com/prometheus/common
+  version: a82f4c12f983cc2649298185f296632953e50d3e
+  subpackages:
+  - expfmt
+  - internal/bitbucket.org/ww/goautoneg
+  - model
+- name: github.com/prometheus/procfs
+  version: 8368d24ba045f26503eb745b624d930cbe214c79
 - name: github.com/quipo/statsd
-  version: 75b7afedf0d2810e897fd5a010dbf896b20f535d
+  version: 3d6a5565f3141ac42f8353d97b2c016da2752006
   subpackages:
   - event
 - name: github.com/sethgrid/pester
-  version: ab3a58f3fbc32058b25cf9e416272cf0097be523
+  version: 68a33a018ad0ac8266f272ec669307a1829c0486
 - name: github.com/Sirupsen/logrus
-  version: d26492970760ca5d33129d2d799e34be5c4782eb
+  version: ba1b36c82c5e05c4f912a88eab0dcd91a171688f
 - name: github.com/spf13/pflag
   version: 1560c1005499d61b80f865c04d39ca7505bf7f0b
 - name: github.com/ugorji/go
-  version: 9c7f9b7a2bc3a520f7c7b30b34b7f85f47fe27b6
+  version: 1d65431a5776db967ae5481e33b789f9ffcea0ec
   subpackages:
   - codec
 - name: golang.org/x/net
@@ -85,7 +121,7 @@ imports:
   - http2/hpack
   - lex/httplex
 - name: golang.org/x/sys
-  version: f5a6bd43051d3f1f5dd3e0dbd531721aa5e75d28
+  version: a55a76086885b80f79961eacb876ebd8caf3868d
   subpackages:
   - unix
 - name: gopkg.in/inf.v0
@@ -203,7 +239,7 @@ imports:
   - 1.4/tools/metrics
   - 1.4/transport
 - name: k8s.io/kubernetes
-  version: ba5b2fcee9d938dae74d4474f68d9d0933f3ec04
+  version: 19e81afecf5eb2b7838c35e2cbf776aff04dc34c
   subpackages:
   - pkg/util/clock
   - pkg/util/flowcontrol

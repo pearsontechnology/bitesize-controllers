@@ -36,6 +36,7 @@ import (
 
 var sshOptions = flag.String("ssh-options", "", "Commandline options passed to ssh.")
 var sshEnv = flag.String("ssh-env", "", "Use predefined ssh options for environment.  Options: gce")
+var sshUser = flag.String("ssh-user", "", "Use predefined user for ssh.")
 var testTimeoutSeconds = flag.Duration("test-timeout", 45*time.Minute, "How long (in golang duration format) to wait for ginkgo tests to complete.")
 var resultsDir = flag.String("results-dir", "/tmp/", "Directory to scp test results to.")
 
@@ -70,13 +71,18 @@ func AddHostnameIp(hostname, ip string) {
 	hostnameIpOverrides.m[hostname] = ip
 }
 
+// GetHostnameOrIp converts hostname into ip and apply user if necessary.
 func GetHostnameOrIp(hostname string) string {
 	hostnameIpOverrides.RLock()
 	defer hostnameIpOverrides.RUnlock()
+	host := hostname
 	if ip, found := hostnameIpOverrides.m[hostname]; found {
-		return ip
+		host = ip
 	}
-	return hostname
+	if *sshUser != "" {
+		host = fmt.Sprintf("%s@%s", *sshUser, host)
+	}
+	return host
 }
 
 // CreateTestArchive builds the local source and creates a tar archive e2e_node_test.tar.gz containing
@@ -240,7 +246,7 @@ func RunRemote(archive string, host string, cleanup bool, junitFilePrefix string
 		glog.Errorf("Issue detecting node's OS via node's /etc/os-release. Err: %v, Output:\n%s", err, output)
 		return "", false, fmt.Errorf("Issue detecting node's OS via node's /etc/os-release. Err: %v, Output:\n%s", err, output)
 	}
-	if strings.Contains(output, "ID=gci") {
+	if strings.Contains(output, "ID=gci") || strings.Contains(output, "ID=cos") {
 		glog.Infof("GCI node and GCI mounter both detected, modifying --experimental-mounter-path accordingly")
 		// Note this implicitly requires the script to be where we expect in the tarball, so if that location changes the error
 		// here will tell us to update the remote test runner.
