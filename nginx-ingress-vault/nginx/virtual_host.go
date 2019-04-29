@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
@@ -20,7 +19,7 @@ import (
 
 type VirtualHost struct {
 	Name         string
-	Host         string
+	Hosts        map[string]bool
 	Namespace    string
 	Paths        []*Path
 	HTTPSEnabled bool
@@ -40,7 +39,7 @@ func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHo
 
 	vhost := &VirtualHost{
 		Name:         name,
-		Host:         ingress.Spec.Rules[0].Host,
+		Hosts:        map[string]bool{},
 		Namespace:    ingress.Namespace,
 		HTTPSEnabled: false,
 		HTTPEnabled:  true,
@@ -50,10 +49,13 @@ func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHo
 		BlueGreen:    false,
 	}
 
+	for _, rule := range ingress.Spec.Rules {
+		vhost.Hosts[rule.Host] = true
+	}
+
 	vhost.Vault = vault
 
 	vhost.applyLabels()
-
 	return vhost, nil
 
 }
@@ -134,14 +136,15 @@ func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.
 // and writes them to nginx ssl config path. Returns error on failure
 func (vhost *VirtualHost) CreateVaultCerts() error {
 	if !vhost.Vault.Enabled {
-		return fmt.Errorf("Vault disabled for %s", vhost.Host)
+		return fmt.Errorf("Vault disabled for %s", vhost.Name)
 	}
 
 	if !vhost.HTTPSEnabled {
-		return fmt.Errorf("No SSL for %s", vhost.Host)
+		return fmt.Errorf("No SSL for %s", vhost.Name)
 	}
 
-	key, crt, err := vhost.Vault.GetSecretsForHost(vhost.Host)
+	key, crt, err := vhost.Vault.GetSecretsForHost(vhost.Name)
+  
 	if err != nil {
 		monitor.IncNoCertSslVHosts()
 		vhost.HTTPSEnabled = false
@@ -183,6 +186,14 @@ func getenv(key, fallback string) string {
 	return value
 }
 
+func (vhost *VirtualHost) ServerNames() string {
+	hosts = []string{}
+	for k := range vhost.Hosts {
+		hosts = append(hosts, k)
+	}
+	return strings.Join(hosts, " ")
+}
+
 func (vhost *VirtualHost) GetPodName() string {
 	return getenv("POD_NAME", "nginx-ingress")
 }
@@ -222,12 +233,18 @@ func (vhost *VirtualHost) Validate() error {
 	schemeRegex, _ := regexp.Compile("^https?$")
 	hostRegex, _ := regexp.Compile("[a-z\\d+].*?\\.\\w{2,8}$")
 
+	if len(vhost.Hosts) == 0 {
+		return fmt.Errorf("No hosts set")
+	}
+
+	// I have no idea what are these below, they are very wrong.
+	// Golang is a typed language, reflect.TypeOf for a non-interface
+	// does not make sense. I will leave for someone else to fix these.
+
 	if reflect.TypeOf(vhost.Name).String() != "string" || vhost.Name == "" {
 		return fmt.Errorf("Name must be set")
 	}
-	if reflect.TypeOf(vhost.Host).String() != "string" || hostRegex.MatchString(reflect.ValueOf(vhost.Host).String()) != true {
-		return fmt.Errorf("Host must be set")
-	}
+
 	if reflect.TypeOf(vhost.Namespace).String() != "string" || vhost.Namespace == "" {
 		return fmt.Errorf("Namespace must be set")
 	}

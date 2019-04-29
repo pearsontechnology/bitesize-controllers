@@ -95,7 +95,7 @@ http {
     server_tokens off;
     # cops-479 - Add 301 redirect if httpsOnly is set to true.
     listen  80;
-    server_name {{$i.Host}};
+    server_name {{$i.ServerNames }};
     resolver {{$i.GetResolver}}:{{$i.GetResolverPort}};
     return  301  https://$server_name$request_uri;
   }
