@@ -64,6 +64,7 @@ import (
 	"k8s.io/kubernetes/pkg/runtime"
 	"k8s.io/kubernetes/pkg/types"
 	"k8s.io/kubernetes/pkg/util/clock"
+	utilconfig "k8s.io/kubernetes/pkg/util/config"
 	"k8s.io/kubernetes/pkg/util/flowcontrol"
 	"k8s.io/kubernetes/pkg/util/mount"
 	utilruntime "k8s.io/kubernetes/pkg/util/runtime"
@@ -91,6 +92,17 @@ const (
 	minImgSize int64 = 23 * 1024 * 1024
 	maxImgSize int64 = 1000 * 1024 * 1024
 )
+
+// fakeImageGCManager is a fake image gc manager for testing. It will return image
+// list from fake runtime directly instead of caching it.
+type fakeImageGCManager struct {
+	fakeImageService kubecontainer.Runtime
+	images.ImageGCManager
+}
+
+func (f *fakeImageGCManager) GetImageList() ([]kubecontainer.Image, error) {
+	return f.fakeImageService.ListImages()
+}
 
 type TestKubelet struct {
 	kubelet          *Kubelet
@@ -196,7 +208,12 @@ func newTestKubeletWithImageList(
 		HighThresholdPercent: 90,
 		LowThresholdPercent:  80,
 	}
-	kubelet.imageManager, err = images.NewImageGCManager(fakeRuntime, mockCadvisor, fakeRecorder, fakeNodeRef, fakeImageGCPolicy)
+	imageGCManager, err := images.NewImageGCManager(fakeRuntime, mockCadvisor, fakeRecorder, fakeNodeRef, fakeImageGCPolicy)
+	assert.NoError(t, err)
+	kubelet.imageManager = &fakeImageGCManager{
+		fakeImageService: fakeRuntime,
+		ImageGCManager:   imageGCManager,
+	}
 	fakeClock := clock.NewFakeClock(time.Now())
 	kubelet.backOff = flowcontrol.NewBackOff(time.Second, time.Minute)
 	kubelet.backOff.Clock = fakeClock
@@ -1977,6 +1994,69 @@ func TestHandlePortConflicts(t *testing.T) {
 
 	// fittingPod should be Pending
 	status, found = kl.statusManager.GetPodStatus(fittingPod.UID)
+	require.True(t, found, "Status of pod %q is not found in the status map", fittingPod.UID)
+	require.Equal(t, api.PodPending, status.Phase)
+}
+
+// Tests that we sort pods based on criticality.
+func TestCriticalPrioritySorting(t *testing.T) {
+	utilconfig.DefaultFeatureGate.Set("ExperimentalCriticalPodAnnotation=True")
+	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
+	kl := testKubelet.kubelet
+	nodes := []api.Node{
+		{ObjectMeta: api.ObjectMeta{Name: testKubeletHostname},
+			Status: api.NodeStatus{Capacity: api.ResourceList{}, Allocatable: api.ResourceList{
+				api.ResourceCPU:    *resource.NewMilliQuantity(10, resource.DecimalSI),
+				api.ResourceMemory: *resource.NewQuantity(100, resource.BinarySI),
+				api.ResourcePods:   *resource.NewQuantity(40, resource.DecimalSI),
+			}}},
+	}
+	kl.nodeLister = testNodeLister{nodes: nodes}
+	kl.nodeInfo = testNodeInfo{nodes: nodes}
+	testKubelet.fakeCadvisor.On("MachineInfo").Return(&cadvisorapi.MachineInfo{}, nil)
+	testKubelet.fakeCadvisor.On("ImagesFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
+	testKubelet.fakeCadvisor.On("RootFsInfo").Return(cadvisorapiv2.FsInfo{}, nil)
+
+	spec := api.PodSpec{NodeName: string(kl.nodeName),
+		Containers: []api.Container{{Resources: api.ResourceRequirements{
+			Requests: api.ResourceList{
+				"memory": resource.MustParse("90"),
+			},
+		}}}}
+	pods := []*api.Pod{
+		podWithUidNameNsSpec("000000000", "newpod", "foo", spec),
+		podWithUidNameNsSpec("987654321", "oldpod", "foo", spec),
+		podWithUidNameNsSpec("123456789", "middlepod", "foo", spec),
+	}
+
+	// Pods are not sorted by creation time.
+	startTime := time.Now()
+	pods[0].CreationTimestamp = unversioned.NewTime(startTime.Add(10 * time.Second))
+	pods[1].CreationTimestamp = unversioned.NewTime(startTime)
+	pods[2].CreationTimestamp = unversioned.NewTime(startTime.Add(1 * time.Second))
+
+	// Make the middle and new pod critical, the middle pod should win
+	// even though it comes later in the list
+	critical := map[string]string{kubetypes.CriticalPodAnnotationKey: ""}
+	pods[0].Annotations = critical
+	pods[1].Annotations = map[string]string{}
+	pods[2].Annotations = critical
+
+	// The non-critical pod should be rejected
+	notfittingPods := []*api.Pod{pods[0], pods[1]}
+	fittingPod := pods[2]
+
+	kl.HandlePodAdditions(pods)
+	// Check pod status stored in the status map.
+	// notfittingPod should be Failed
+	for _, p := range notfittingPods {
+		status, found := kl.statusManager.GetPodStatus(p.UID)
+		require.True(t, found, "Status of pod %q is not found in the status map", p.UID)
+		require.Equal(t, api.PodFailed, status.Phase)
+	}
+
+	// fittingPod should be Pending
+	status, found := kl.statusManager.GetPodStatus(fittingPod.UID)
 	require.True(t, found, "Status of pod %q is not found in the status map", fittingPod.UID)
 	require.Equal(t, api.PodPending, status.Phase)
 }

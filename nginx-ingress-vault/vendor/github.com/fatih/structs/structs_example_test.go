@@ -81,7 +81,7 @@ func ExampleMap_tags() {
 
 }
 
-func ExampleMap_nested() {
+func ExampleMap_omitNested() {
 	// By default field with struct types are processed too. We can stop
 	// processing them via "omitnested" tag option.
 	type Server struct {
@@ -301,7 +301,7 @@ func ExampleIsZero() {
 		Enabled bool
 	}
 
-	// Nothing is initalized
+	// Nothing is initialized
 	a := &Server{}
 	isZeroA := IsZero(a)
 

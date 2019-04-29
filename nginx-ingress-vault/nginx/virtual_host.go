@@ -4,15 +4,13 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 	"net/http"
 	"net/url"
 	"os"
 	"reflect"
 	"regexp"
 	"strings"
-
-	"k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
-
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
@@ -58,7 +56,6 @@ func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHo
 	vhost.Vault = vault
 
 	vhost.applyLabels()
-
 	return vhost, nil
 
 }
@@ -147,6 +144,7 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
 	}
 
 	key, crt, err := vhost.Vault.GetSecretsForHost(vhost.Name)
+  
 	if err != nil {
 		monitor.IncNoCertSslVHosts()
 		vhost.HTTPSEnabled = false

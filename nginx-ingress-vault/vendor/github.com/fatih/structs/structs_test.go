@@ -380,7 +380,7 @@ func TestMap_NestedMapWithSliceIntValues(t *testing.T) {
 
 	b := &B{
 		Foo: map[string][]int{
-			"example_key": []int{80},
+			"example_key": {80},
 		},
 	}
 
@@ -399,7 +399,7 @@ func TestMap_NestedMapWithSliceIntValues(t *testing.T) {
 
 	foo := in["Foo"].(map[string][]int)
 	if name := foo["example_key"]; name[0] != 80 {
-		t.Errorf("Map nested struct's name field should give example, got: %s", name)
+		t.Errorf("Map nested struct's name field should give example, got: %v", name)
 	}
 }
 
@@ -418,7 +418,7 @@ func TestMap_NestedMapWithSliceStructValues(t *testing.T) {
 
 	b := &B{
 		Foo: map[string][]address{
-			"example_key": []address{
+			"example_key": {
 				{Country: "Turkey"},
 			},
 		},
@@ -463,8 +463,8 @@ func TestMap_NestedSliceWithStructValues(t *testing.T) {
 	p := person{
 		Name: "test",
 		Addresses: []address{
-			address{Country: "England"},
-			address{Country: "Italy"},
+			{Country: "England"},
+			{Country: "Italy"},
 		},
 	}
 	mp := Map(p)
@@ -492,8 +492,8 @@ func TestMap_NestedSliceWithPointerOfStructValues(t *testing.T) {
 	p := person{
 		Name: "test",
 		Addresses: []*address{
-			&address{Country: "England"},
-			&address{Country: "Italy"},
+			{Country: "England"},
+			{Country: "Italy"},
 		},
 	}
 	mp := Map(p)
@@ -1425,4 +1425,29 @@ func TestPointer2Pointer(t *testing.T) {
 
 	c := &b
 	_ = Map(&c)
+}
+
+func TestMap_InterfaceTypeWithMapValue(t *testing.T) {
+	type A struct {
+		Name    string      `structs:"name"`
+		IP      string      `structs:"ip"`
+		Query   string      `structs:"query"`
+		Payload interface{} `structs:"payload"`
+	}
+
+	a := A{
+		Name:    "test",
+		IP:      "127.0.0.1",
+		Query:   "",
+		Payload: map[string]string{"test_param": "test_param"},
+	}
+
+	defer func() {
+		err := recover()
+		if err != nil {
+			t.Error("Converting Map with an interface{} type with map value should not panic")
+		}
+	}()
+
+	_ = Map(a)
 }
