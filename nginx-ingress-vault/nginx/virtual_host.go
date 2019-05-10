@@ -3,6 +3,7 @@ package nginx
 import (
 	"crypto/tls"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
 	"k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	log "github.com/Sirupsen/logrus"
 
 	"github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
 	vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
@@ -144,7 +144,7 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
 	}
 
 	key, crt, err := vhost.Vault.GetSecretsForHost(vhost.Name)
-  
+
 	if err != nil {
 		monitor.IncNoCertSslVHosts()
 		vhost.HTTPSEnabled = false
@@ -187,7 +187,7 @@ func getenv(key, fallback string) string {
 }
 
 func (vhost *VirtualHost) ServerNames() string {
-	hosts = []string{}
+	hosts := []string{}
 	for k := range vhost.Hosts {
 		hosts = append(hosts, k)
 	}
@@ -231,7 +231,7 @@ func newHTTPClient(dest *url.URL) *http.Client {
 func (vhost *VirtualHost) Validate() error {
 
 	schemeRegex, _ := regexp.Compile("^https?$")
-	hostRegex, _ := regexp.Compile("[a-z\\d+].*?\\.\\w{2,8}$")
+	_, _ = regexp.Compile("[a-z\\d+].*?\\.\\w{2,8}$")
 
 	if len(vhost.Hosts) == 0 {
 		return fmt.Errorf("No hosts set")
