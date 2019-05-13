@@ -129,7 +129,12 @@ func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.
 		Namespace: vhost.Namespace,
 	}
 
-	vhost.Paths = append(vhost.Paths, p)
+	for _, v := range vhost.Paths {
+		if p != v {
+			vhost.Paths = append(vhost.Paths, p)
+			break
+		}
+	}
 }
 
 // CreateVaultCerts gets certificates (private and crt) from vault
