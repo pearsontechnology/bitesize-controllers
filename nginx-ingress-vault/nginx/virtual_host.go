@@ -148,7 +148,7 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
 		return fmt.Errorf("No SSL for %s", vhost.Name)
 	}
 
-	key, crt, err := vhost.Vault.GetSecretsForHost(vhost.Name)
+	key, crt, err := vhost.Vault.GetSecretsForHost(vhost.ServerNames())
 
 	if err != nil {
 		monitor.IncNoCertSslVHosts()
