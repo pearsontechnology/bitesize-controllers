@@ -129,12 +129,8 @@ func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.
 		Namespace: vhost.Namespace,
 	}
 
-	for _, v := range vhost.Paths {
-		if p != v {
-			vhost.Paths = append(vhost.Paths, p)
-			break
-		}
-	}
+	AppendUniquePath(vhost.Paths, p)
+
 }
 
 // CreateVaultCerts gets certificates (private and crt) from vault
@@ -275,4 +271,13 @@ func (vhost *VirtualHost) Validate() error {
 		return fmt.Errorf("Paths must be set")
 	}
 	return nil
+}
+
+func AppendUniquePath(slice []*Path, p *Path) []*Path {
+	for _, ele := range slice {
+		if ele == p {
+			return slice
+		}
+	}
+	return append(slice, p)
 }
