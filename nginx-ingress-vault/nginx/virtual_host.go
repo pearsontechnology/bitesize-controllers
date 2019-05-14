@@ -129,7 +129,7 @@ func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.
 		Namespace: vhost.Namespace,
 	}
 
-	AppendUniquePath(vhost.Paths, p)
+	vhost.Paths = AppendUniquePath(vhost.Paths, p)
 
 }
 
@@ -144,7 +144,8 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
 		return fmt.Errorf("No SSL for %s", vhost.Name)
 	}
 
-	key, crt, err := vhost.Vault.GetSecretsForHost(vhost.ServerNames())
+	t := strings.TrimSpace(vhost.ServerNames())
+	key, crt, err := vhost.Vault.GetSecretsForHost(t)
 
 	if err != nil {
 		monitor.IncNoCertSslVHosts()
@@ -267,17 +268,12 @@ func (vhost *VirtualHost) Validate() error {
 	if reflect.TypeOf(vhost.BlueGreen).Kind() != reflect.Bool {
 		return fmt.Errorf("BlueGreen label must be true; false")
 	}
-	if reflect.TypeOf(vhost.Paths).String() != "[]*nginx.Path" || vhost.Paths == nil {
-		return fmt.Errorf("Paths must be set")
-	}
 	return nil
 }
 
 func AppendUniquePath(slice []*Path, p *Path) []*Path {
-	for _, ele := range slice {
-		if ele == p {
-			return slice
-		}
+	if len(slice) == 0 {
+		return append(slice, p)
 	}
-	return append(slice, p)
+	return slice
 }
