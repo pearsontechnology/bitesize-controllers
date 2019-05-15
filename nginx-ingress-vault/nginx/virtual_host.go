@@ -144,36 +144,40 @@ func (vhost *VirtualHost) CreateVaultCerts() error {
 		return fmt.Errorf("No SSL for %s", vhost.Name)
 	}
 
-	t := strings.TrimSpace(vhost.ServerNames())
-	key, crt, err := vhost.Vault.GetSecretsForHost(t)
+	ServerNamesSlice := strings.Fields(vhost.ServerNames())
 
-	if err != nil {
-		monitor.IncNoCertSslVHosts()
-		vhost.HTTPSEnabled = false
-		return err
+	for _, s := range ServerNamesSlice {
+
+		key, crt, err := vhost.Vault.GetSecretsForHost(s)
+
+		if err != nil {
+			monitor.IncNoCertSslVHosts()
+			vhost.HTTPSEnabled = false
+			return err
+		}
+
+		keyAbsolutePath := ConfigPath + "/certs/" + key.Filename
+		if err := ioutil.WriteFile(keyAbsolutePath, []byte(key.Secret), 0400); err != nil {
+			vhost.HTTPSEnabled = false
+			monitor.IncFailedSslVHosts()
+			return fmt.Errorf("Failed to write file %v: %v", keyAbsolutePath, err)
+		}
+
+		certAbsolutePath := ConfigPath + "/certs/" + crt.Filename
+		if err := ioutil.WriteFile(certAbsolutePath, []byte(crt.Secret), 0400); err != nil {
+			vhost.HTTPSEnabled = false
+			monitor.IncFailedSslVHosts()
+			return fmt.Errorf("failed to write file %v: %v", certAbsolutePath, err)
+		}
+
+		// Cert validation
+		if _, err := tls.LoadX509KeyPair(certAbsolutePath, keyAbsolutePath); err != nil {
+			vhost.HTTPSEnabled = false
+			monitor.IncSslVHostsCertFail()
+			return fmt.Errorf("Failed to validate certificate")
+		}
+
 	}
-
-	keyAbsolutePath := ConfigPath + "/certs/" + key.Filename
-	if err := ioutil.WriteFile(keyAbsolutePath, []byte(key.Secret), 0400); err != nil {
-		vhost.HTTPSEnabled = false
-		monitor.IncFailedSslVHosts()
-		return fmt.Errorf("Failed to write file %v: %v", keyAbsolutePath, err)
-	}
-
-	certAbsolutePath := ConfigPath + "/certs/" + crt.Filename
-	if err := ioutil.WriteFile(certAbsolutePath, []byte(crt.Secret), 0400); err != nil {
-		vhost.HTTPSEnabled = false
-		monitor.IncFailedSslVHosts()
-		return fmt.Errorf("failed to write file %v: %v", certAbsolutePath, err)
-	}
-
-	// Cert validation
-	if _, err := tls.LoadX509KeyPair(certAbsolutePath, keyAbsolutePath); err != nil {
-		vhost.HTTPSEnabled = false
-		monitor.IncSslVHostsCertFail()
-		return fmt.Errorf("Failed to validate certificate")
-	}
-
 	return nil
 }
 
