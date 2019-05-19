@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"io/ioutil"
 	"k8s.io/client-go/1.4/pkg/apis/extensions/v1beta1"
 	"net/http"
 	"net/url"
@@ -47,14 +46,14 @@ func NewVirtualHost(ingress v1beta1.Ingress) (*VirtualHost, error) {
 		Scheme:       "http",
 		Ingress:      ingress,
 		BlueGreen:    false,
-		Vault:    nil,
+		Vault:        nil,
 	}
 
 	for _, rule := range ingress.Spec.Rules {
 		vhost.Hosts[rule.Host] = true
 	}
 
-//	vhost.Vault = vault
+	//	vhost.Vault = vault
 
 	vhost.applyLabels()
 	return vhost, nil
@@ -111,10 +110,10 @@ func ProcessIngresses(ingresses *v1beta1.IngressList) []*VirtualHost {
 			continue
 		}
 
-//		if err = vhost.CreateVaultCerts(); err != nil {
-//			log.Errorf("%s\n", err.Error())
-//			vhost.HTTPSEnabled = false
-//		}
+		if err = vhost.CheckCerts(); err != nil {
+			log.Errorf("%s\n", err.Error())
+			vhost.HTTPSEnabled = false
+		}
 		if len(vhost.Paths) > 0 {
 			virtualHosts = append(virtualHosts, vhost)
 		}
@@ -134,48 +133,35 @@ func (vhost *VirtualHost) appendService(serviceName string, ingressPath v1beta1.
 
 }
 
-// CreateVaultCerts gets certificates (private and crt) from vault
-// and writes them to nginx ssl config path. Returns error on failure
-func (vhost *VirtualHost) CreateVaultCerts() error {
-	if !vhost.Vault.Enabled {
-		return fmt.Errorf("Vault disabled for %s", vhost.Name)
-	}
-
+// CheckCerts checks for a valid key pair in /etc/nginx/certs.
+func (vhost *VirtualHost) CheckCerts() error {
 	if !vhost.HTTPSEnabled {
 		return fmt.Errorf("No SSL for %s", vhost.Name)
 	}
 
-	ServerNamesSlice := strings.Fields(vhost.ServerNames())
+	for domainName, _ := range vhost.Hosts {
+		certAbsolutePath := ConfigPath + "/certs/" + domainName + ".crt"
+		keyAbsolutePath := ConfigPath + "/certs/" + domainName + ".key"
 
-	for _, s := range ServerNamesSlice {
-
-		key, crt, err := vhost.Vault.GetSecretsForHost(s)
-
-		if err != nil {
-			monitor.IncNoCertSslVHosts()
-			vhost.HTTPSEnabled = false
-			return err
-		}
-
-		keyAbsolutePath := ConfigPath + "/certs/" + key.Filename
-		if err := ioutil.WriteFile(keyAbsolutePath, []byte(key.Secret), 0400); err != nil {
+		_, err := os.Stat(certAbsolutePath)
+		if os.IsNotExist(err) {
 			vhost.HTTPSEnabled = false
 			monitor.IncFailedSslVHosts()
-			return fmt.Errorf("Failed to write file %v: %v", keyAbsolutePath, err)
+			return fmt.Errorf("%s file does not exist", certAbsolutePath)
 		}
 
-		certAbsolutePath := ConfigPath + "/certs/" + crt.Filename
-		if err := ioutil.WriteFile(certAbsolutePath, []byte(crt.Secret), 0400); err != nil {
+		_, err = os.Stat(keyAbsolutePath)
+		if os.IsNotExist(err) {
 			vhost.HTTPSEnabled = false
 			monitor.IncFailedSslVHosts()
-			return fmt.Errorf("failed to write file %v: %v", certAbsolutePath, err)
+			return fmt.Errorf("%s file does not exist", keyAbsolutePath)
 		}
 
 		// Cert validation
 		if _, err := tls.LoadX509KeyPair(certAbsolutePath, keyAbsolutePath); err != nil {
 			vhost.HTTPSEnabled = false
 			monitor.IncSslVHostsCertFail()
-			return fmt.Errorf("Failed to validate certificate")
+			return fmt.Errorf("Failed to validate certificate for %s", domainName)
 		}
 
 	}
