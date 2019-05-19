@@ -79,23 +79,10 @@ func main() {
 	for {
 
 		if !vault.Ready() {
-			vault, err = vlt.NewVaultReader()
-
-			// Reset existing ingress list to allow pull of ssl from vault
 			known = &v1beta1.IngressList{}
 			time.Sleep(reloadFrequency)
 			continue
 		}
-
-		vault, err = vault.CheckSecretToken()
-
-		if err != nil {
-			log.Errorf("Error calling CheckSecretToken: %s", err)
-			time.Sleep(reloadFrequency)
-			continue
-		}
-
-		time.Sleep(reloadFrequency)
 
 		ingresses, err := k8s.GetIngresses(onKubernetes)
 
