@@ -32,7 +32,7 @@ type VirtualHost struct {
 }
 
 // NewVirtualHost returns virtual host instance
-func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHost, error) {
+func NewVirtualHost(ingress v1beta1.Ingress) (*VirtualHost, error) {
 	name := strings.Replace(ingress.ObjectMeta.Name, "-", "_", -1) +
 		"_" +
 		strings.Replace(ingress.Namespace, "-", "_", -1)
@@ -47,13 +47,14 @@ func NewVirtualHost(ingress v1beta1.Ingress, vault *vlt.VaultReader) (*VirtualHo
 		Scheme:       "http",
 		Ingress:      ingress,
 		BlueGreen:    false,
+		Vault:    nil,
 	}
 
 	for _, rule := range ingress.Spec.Rules {
 		vhost.Hosts[rule.Host] = true
 	}
 
-	vhost.Vault = vault
+//	vhost.Vault = vault
 
 	vhost.applyLabels()
 	return vhost, nil
@@ -93,14 +94,14 @@ func (vhost *VirtualHost) CollectPaths() {
 	}
 }
 
-func ProcessIngresses(ingresses *v1beta1.IngressList, vault *vlt.VaultReader) []*VirtualHost {
+func ProcessIngresses(ingresses *v1beta1.IngressList) []*VirtualHost {
 
 	var err error
 	var virtualHosts = []*VirtualHost{}
 
 	for _, ingress := range ingresses.Items {
 
-		vhost, _ := NewVirtualHost(ingress, vault)
+		vhost, _ := NewVirtualHost(ingress)
 		monitor.IncVHosts()
 		vhost.CollectPaths()
 
@@ -110,10 +111,10 @@ func ProcessIngresses(ingresses *v1beta1.IngressList, vault *vlt.VaultReader) []
 			continue
 		}
 
-		if err = vhost.CreateVaultCerts(); err != nil {
-			log.Errorf("%s\n", err.Error())
-			vhost.HTTPSEnabled = false
-		}
+//		if err = vhost.CreateVaultCerts(); err != nil {
+//			log.Errorf("%s\n", err.Error())
+//			vhost.HTTPSEnabled = false
+//		}
 		if len(vhost.Paths) > 0 {
 			virtualHosts = append(virtualHosts, vhost)
 		}
