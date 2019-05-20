@@ -25,7 +25,7 @@ import (
 	k8s "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/kubernetes"
 	"github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/monitor"
 	"github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/nginx"
-//	vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
+	//	vlt "github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/vault"
 	"github.com/pearsontechnology/bitesize-controllers/nginx-ingress-vault/version"
 
 	"github.com/quipo/statsd"
@@ -72,17 +72,9 @@ func main() {
 
 	known := &v1beta1.IngressList{}
 
-//	vault, _ := vlt.NewVaultReader()
-//	go vault.RenewToken()
-
-	// Controller loop
 	for {
 
-//		if !vault.Ready() {
-			known = &v1beta1.IngressList{}
-			time.Sleep(reloadFrequency)
-//			continue
-//		}
+		time.Sleep(reloadFrequency)
 
 		ingresses, err := k8s.GetIngresses(onKubernetes)
 
@@ -101,11 +93,6 @@ func main() {
 		monitor.Reset()
 
 		virtualHosts := nginx.ProcessIngresses(ingresses)
-
-		if err != nil {
-			log.Errorf("Error processing ingresses: %v", err)
-			continue
-		}
 
 		if len(virtualHosts) == 0 && onKubernetes == true {
 			continue
