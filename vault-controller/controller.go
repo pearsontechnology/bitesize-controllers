@@ -324,26 +324,6 @@ func main() {
                     }
                 }
 
-                leaderState, err := vaultClient.LeaderStatus()
-                if err != nil {
-                    log.Errorf("ERROR: Instance state unknown: %v: %v", name, err.Error())
-                    //TODO handle errors
-                }
-                switch leaderState {
-                case true:
-                    log.Infof("Instance is leader: %v", name)
-                    // TODO Do we care ?
-                case false:
-                    log.Infof("Instance is standby: %v", name)
-                default:
-                    log.Errorf("ERROR: Instance state unknown: %v", name)
-                    if onKubernetes == true {
-                        deletePod(name, vaultNamespace)
-                        continue
-                    }
-                }
-        }
-
         time.Sleep(reloadFrequency)
 
     } //End controller loop
