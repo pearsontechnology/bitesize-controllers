@@ -160,7 +160,7 @@ func main() {
         log.Debugf("DebugLevel on")
     }
 
-	log.Infof("Starting vault controller version: %s", version)
+    log.Infof("Starting vault controller version: %s", version)
 
     vaultLabelKey := os.Getenv("VAULT_LABEL_KEY")
     if vaultLabelKey == "" {
@@ -223,7 +223,7 @@ func main() {
 
     v := os.Getenv("RELOAD_FREQUENCY")
     reloadFrequency, err := time.ParseDuration(v)
-    if err != nil || v  == "" {
+    if err != nil || v == "" {
         reloadFrequency, _ = time.ParseDuration(defaultReloadFrequency)
     }
 
@@ -247,7 +247,7 @@ func main() {
             log.Infof("Proceeding with pod discovery on %v/%v", vaultLabelKey, vaultLabelVal)
             instanceList, err = k8s.GetPodIps(vaultLabelKey, vaultLabelVal, vaultNamespace)
             if err != nil {
-                log.Infof("Error retrieving Pod IPs: %v", err )
+                log.Infof("Error retrieving Pod IPs: %v", err)
             }
         } else {
             log.Info("Proceeding with pod discovery on VAULT_INSTANCES: %v", vaultInstances)
@@ -255,10 +255,10 @@ func main() {
             for _, host = range strings.Split(vaultInstances, ",") {
                 hostIp, err := net.LookupHost(host)
                 if err != nil {
-                    log.Infof("Host lookup error for %v: %v", host, err )
+                    log.Infof("Host lookup error for %v: %v", host, err)
                     continue
                 }
-                log.Debugf("Vault instance: %v IP: %v", host,hostIp[0])
+                log.Debugf("Vault instance: %v IP: %v", host, hostIp[0])
                 instanceList[host] = hostIp[0]
             }
         }
@@ -268,63 +268,64 @@ func main() {
         // Get Status for each instance
         for name, ip := range instanceList {
             log.Debugf("Pod %v IP: %v", name, ip)
-                if ip == "error" {
-                    if onKubernetes == true {
-                        deletePod(name, vaultNamespace)
-                        continue
-                    }
-                }
-                if len(ip) <= 0 {
-                    log.Debugf("Skipping pod: %v", name)
+            if ip == "error" {
+                if onKubernetes == true {
+                    deletePod(name, vaultNamespace)
                     continue
                 }
-                instanceAddress := vaultScheme + "://" + ip + ":" + vaultPort
-                log.Debugf("Connecting to vault at: %v", instanceAddress)
-                vaultClient, err := vault.NewVaultClient(instanceAddress, vaultToken)
+            }
+            if len(ip) <= 0 {
+                log.Debugf("Skipping pod: %v", name)
+                continue
+            }
+            instanceAddress := vaultScheme + "://" + ip + ":" + vaultPort
+            log.Debugf("Connecting to vault at: %v", instanceAddress)
+            vaultClient, err := vault.NewVaultClient(instanceAddress, vaultToken)
+            if err != nil {
+                log.Debugf("Vault client failed for: %v, %v", name, err.Error())
+                continue
+            }
+
+            sealState, err := vaultClient.SealStatus()
+            if err != nil {
+                log.Errorf("ERROR: Seal state unknown: %v: %v", name, err.Error())
+                //TODO handle errors
+            }
+            if sealState == true {
+                log.Infof("Instance Sealed: %v", name)
+                if unsealKeys != "" {
+                    sealState, err = vaultClient.Unseal(unsealKeys)
+                }
                 if err != nil {
-                    log.Debugf("Vault client failed for: %v, %v", name, err.Error())
+                    log.Errorf("Error unsealing: %v", err.Error())
+                }
+            }
+            initState, err := vaultClient.InitStatus()
+            if err != nil {
+                log.Errorf("ERROR: Init state unknown: %v: %v", name, err.Error())
+                //TODO handle errors
+                if onKubernetes == true {
+                    deletePod(name, vaultNamespace)
                     continue
                 }
-
-                sealState, err := vaultClient.SealStatus()
+            }
+            if initState == true {
+                log.Debugf("Instance initialised: %v", name)
+            } else if initState == false {
+                log.Infof("Instance NOT initialised: %v", name)
+                vaultClient, vaultToken, unsealKeys, err = initInstance(vaultClient, onKubernetes, vaultInitShares, vaultInitThreshold)
+                vaultClient.Unseal(unsealKeys)
+                close(crdStopChan)
+                crdStopChan = make(chan bool)
+                go startCRD(crdStopChan, vaultAddress, vaultToken)
                 if err != nil {
-                    log.Errorf("ERROR: Seal state unknown: %v: %v", name, err.Error())
+                    log.Errorf("ERROR: init resturned error: %v", err.Error())
                     //TODO handle errors
                 }
-                if sealState == true {
-                    log.Infof("Instance Sealed: %v", name)
-                    if unsealKeys != "" {
-                        sealState, err = vaultClient.Unseal(unsealKeys)
-                    }
-                    if err != nil {
-                        log.Errorf("Error unsealing: %v",  err.Error())
-                    }
-                }
-                initState, err := vaultClient.InitStatus()
-                if err != nil {
-                    log.Errorf("ERROR: Init state unknown: %v: %v", name, err.Error())
-                    //TODO handle errors
-                    if onKubernetes == true {
-                        deletePod(name, vaultNamespace)
-                        continue
-                    }
-                }
-                if initState == true {
-                    log.Debugf("Instance initialised: %v", name)
-                } else if initState == false {
-                    log.Infof("Instance NOT initialised: %v", name)
-                    vaultClient, vaultToken, unsealKeys, err = initInstance(vaultClient, onKubernetes, vaultInitShares, vaultInitThreshold)
-                    vaultClient.Unseal(unsealKeys)
-                    close(crdStopChan)
-                    crdStopChan = make(chan bool)
-                    go startCRD(crdStopChan, vaultAddress, vaultToken)
-                    if err != nil {
-                        log.Errorf("ERROR: init resturned error: %v", err.Error())
-                        //TODO handle errors
-                    }
-                }
+            }
 
-        time.Sleep(reloadFrequency)
+            time.Sleep(reloadFrequency)
 
-    } //End controller loop
+        } //End controller loop
+    }
 }
